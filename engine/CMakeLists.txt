@@ -1,0 +1,5 @@
+aux_source_directory(src ENGINE_SRC)
+add_library(engine ${ENGINE_SRC})
+include_directories(include)
+include_directories(${PROJECT_SOURCE_DIR}/glad/include)
+target_link_libraries(engine PRIVATE spdlog freetype glad glfw3 opengl32)
