@@ -16,10 +16,11 @@ uniform vec4 base_color;
 uniform float metallic_factor;
 uniform float roughness_factor;
 
-uniform sampler2D texture0;
+//uniform sampler2D texture0;
 
 void main(){
-    vec4 tex_color = texture(texture0,v_TexCoord);
+//    vec4 tex_color = texture(texture0,v_TexCoord);
+    vec4 tex_color = vec4(1);
 
     vec3 light_dir = normalize(light_pos-v_WorldPos);
 

@@ -14,6 +14,9 @@
 
 #define PI 3.1415926
 
+#define CGLTF_IMPLEMENTATION
+#include "cgltf.h"
+
 namespace wx {
     Renderer::Renderer(/* args */)
     = default;
@@ -38,7 +41,7 @@ namespace wx {
         SHADER_MODE = true;
     }
 
-    void Renderer::Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram* shaderProgram){
+    void Renderer::Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram){
         glEnable(GL_DEPTH_TEST);
 //        glEnable(GL_CULL_FACE);
 //        glCullFace(GL_BACK);
@@ -52,9 +55,9 @@ namespace wx {
         glActiveTexture(GL_TEXTURE0);
         textures[0].Bind();
 
-        shaderProgram->Bind();
+        ShaderProgram::Bind(shaderProgram);
         auto time = (float)Window::GetTimeInSecond();
-        shaderProgram->SetFloat("time",time);
+        ShaderProgram::SetFloat(shaderProgram,"time",time);
 
         float aspect = window->GetAspect();
         glm::mat4 P,V(1.0f),M(1.0f);
@@ -63,12 +66,12 @@ namespace wx {
         M = glm::rotate(M,time*0.1f,glm::vec3(0,1,0));
         M = glm::scale(M,glm::vec3(1.0f));
 
-        shaderProgram->SetMat4("P", reinterpret_cast<float *>(&P));
-        shaderProgram->SetMat4("V", reinterpret_cast<float *>(&V));
-        shaderProgram->SetMat4("M", reinterpret_cast<float *>(&M));
+        ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+        ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+        ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
 
         vec4 base_color{1.0f};
-        shaderProgram->SetVec4("base_color", value_ptr(base_color));
+        ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(base_color));
 
         for (size_t i = 0; i < meshList.size(); i++)
         {
@@ -81,7 +84,7 @@ namespace wx {
         glDisable(GL_DEPTH_TEST);
     }
 
-    void Renderer::Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram* shaderProgram){
+    void Renderer::Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram){
         glEnable(GL_DEPTH_TEST);
 //        glEnable(GL_CULL_FACE);
 //        glCullFace(GL_BACK);
@@ -98,19 +101,222 @@ namespace wx {
         V = camera->GetViewMatrix();
         M = glm::scale(M,glm::vec3(1.0f));
 
-        shaderProgram->Bind();
-        shaderProgram->SetMat4("P", reinterpret_cast<float *>(&P));
-        shaderProgram->SetMat4("V", reinterpret_cast<float *>(&V));
-        shaderProgram->SetMat4("M", reinterpret_cast<float *>(&M));
+        ShaderProgram::Bind(shaderProgram);
+        ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+        ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+        ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
 
         glm::vec4 base_color{1.0f};
-        shaderProgram->SetVec4("base_color", value_ptr(base_color));
+        ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(base_color));
 
         terrain->Draw();
 
         ShaderProgram::Unbind();
 
         glDisable(GL_DEPTH_TEST);
+    }
+
+    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models) {
+        glEnable(GL_DEPTH_TEST);
+//        glEnable(GL_CULL_FACE);
+//        glCullFace(GL_BACK);
+        if(WIREFRAME_MODE){
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
+        if(SHADER_MODE){
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+
+        float aspect = window->GetAspect();
+        glm::mat4 P,V(1.0f),M(1.0f);
+        P = glm::perspective(glm::radians(60.f),aspect,.1f,1000.f);
+        V = camera->GetViewMatrix();
+
+        M = glm::scale(M,glm::vec3(1.0f));
+
+        for (auto& model:models) {
+            for (int i = 0; i < model.mesh_count; ++i) {
+                mesh_t& mesh = model.meshes[i];
+                material_t& mat = mesh.materials[0];
+
+                uint32_t shaderProgram = mat.program_id;
+                ShaderProgram::Bind(shaderProgram);
+                ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+                ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+                ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+
+                ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(mat.base_color));
+                ShaderProgram::SetFloat(shaderProgram, "metallic_factor", mat.metallic);
+                ShaderProgram::SetFloat(shaderProgram, "roughness_factor", mat.roughness);
+
+                glBindVertexArray(mesh.vao);
+                glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
+                glBindVertexArray(0);
+
+                ShaderProgram::Unbind();
+            }
+        }
+
+        glDisable(GL_DEPTH_TEST);
+    }
+
+    vector<model_t> Renderer::LoadModelFromGLTF(const char *filename) {
+        vector<model_t> models;
+        cgltf_options options{};
+        cgltf_data* data = NULL;
+//        cgltf_result result = cgltf_parse_file(&options, filename, &data);
+        int len = 0;
+        void* mdata = (void *) AssetsLoader::LoadRawData(filename, &len);
+        cgltf_result result = cgltf_parse(&options,mdata,len,&data);
+        if (result == cgltf_result_success)
+        {
+            /* TODO make awesome stuff */
+
+            cgltf_load_buffers(&options,data,filename);
+
+            WX_CORE_INFO("Success load : {}",filename);
+        }else{
+            WX_CORE_ERROR("Can't find file : {}",filename);
+            return models;
+        }
+
+        if(data->meshes_count<1){
+            return models;
+        }
+
+        WX_CORE_INFO("Upload BaseShader ..." );
+        uint32_t  shader = ShaderProgram::LoadShader("base");
+
+        for (int i = 0; i < data->meshes_count; ++i) {
+            cgltf_mesh cmesh = data->meshes[i];
+            model_t model;
+            for (int i = 0; i < cmesh.primitives_count; ++i) {
+                mesh_t mesh;
+
+                std::cout << "Upload Mesh ..." << std::endl;
+
+                glGenVertexArrays(1,&mesh.vao);
+                glBindVertexArray(mesh.vao);
+
+                uint32_t vbo = 0;
+
+
+                std::cout << "Mesh : " << cmesh.name << std::endl;
+
+                cgltf_primitive primitive = cmesh.primitives[i];
+
+                cgltf_accessor* position_accessor = nullptr;
+                cgltf_accessor* normal_accessor = nullptr;
+                cgltf_accessor* texcoord_accessor = nullptr;
+                cgltf_accessor* indices_accessor = primitive.indices;
+
+                for (int i = 0; i < primitive.attributes_count; ++i) {
+                    auto attr = primitive.attributes[i];
+                    std::cout << "Attr L : " << attr.name << std::endl;
+                    if(strcmp(attr.name,"POSITION")==0){
+                        std::cout << "Attr : " << attr.name << std::endl;
+                        position_accessor = attr.data;
+                        continue;
+                    }
+                    if(strcmp(attr.name,"NORMAL")==0){
+                        std::cout << "Attr : " << attr.name << std::endl;
+                        normal_accessor = attr.data;
+                        continue;
+                    }
+                    if(strcmp(attr.name,"TEXCOORD_0")==0){
+                        std::cout << "Attr : " << attr.name << std::endl;
+                        texcoord_accessor = attr.data;
+                        continue;
+                    }
+                }
+
+                int offset = position_accessor->buffer_view->offset;
+                void* vertices_buffer = (uint8_t*)(position_accessor->buffer_view->buffer->data)+offset;
+                int vertices_num = position_accessor->count;
+                int vertices_size = position_accessor->buffer_view->size;
+
+                offset = normal_accessor->buffer_view->offset;
+                void* normal_buffer = (uint8_t*)(normal_accessor->buffer_view->buffer->data)+offset;
+                int normal_num = normal_accessor->count;
+                int normal_size = normal_accessor->buffer_view->size;
+
+                void* texcoord0_buffer;
+                int texcoord0_num;
+                int texcoord0_size;
+                if(texcoord_accessor){
+                    offset = texcoord_accessor->buffer_view->offset;
+                    texcoord0_buffer = (uint8_t*)(texcoord_accessor->buffer_view->buffer->data)+offset;
+                    texcoord0_num = texcoord_accessor->count;
+                    texcoord0_size = texcoord_accessor->buffer_view->size;
+                }
+
+                offset = indices_accessor->buffer_view->offset;
+                void* indices_buffer = (uint8_t*)(indices_accessor->buffer_view->buffer->data)+offset;
+                int indices_num = indices_accessor->count;
+                int indices_size = indices_accessor->buffer_view->size;
+
+                mesh.vertices_count = vertices_num;
+                mesh.indices_count = indices_num;
+
+                //vertices
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,vertices_size,vertices_buffer,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+
+                //normals
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,normal_size,normal_buffer,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+
+                //texcoords
+                if(texcoord_accessor){
+                    glGenBuffers(1,&vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                    glBufferData(GL_ARRAY_BUFFER,texcoord0_size,texcoord0_buffer,GL_STATIC_DRAW);
+                    glEnableVertexAttribArray(2);
+                    glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
+                }
+
+                uint32_t ebo = 0 ;
+                glGenBuffers(1,&ebo);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER,indices_size,indices_buffer,GL_STATIC_DRAW);
+
+                mesh.indices_type = GL_UNSIGNED_SHORT;
+                glBindVertexArray(0);
+
+                if(primitive.material){
+                    if(primitive.material->has_pbr_metallic_roughness){
+                        std::cout << "Upload Material ..." << std::endl;
+                        cgltf_material* cmat = primitive.material;
+                        cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
+                        mesh.materials[mesh.material_count].base_color = {baseColor[0],baseColor[1],baseColor[2],baseColor[3]};
+                        mesh.materials[mesh.material_count].metallic = cmat->pbr_metallic_roughness.metallic_factor;
+                        mesh.materials[mesh.material_count].roughness = cmat->pbr_metallic_roughness.roughness_factor;
+                        mesh.materials[mesh.material_count].program_id = shader;
+
+                        mesh.material_count++;
+                    }
+                }else{
+                    mesh.materials[mesh.material_count].base_color = {1.f,0.3f,0.3f,1.0f};
+                    mesh.materials[mesh.material_count].metallic = 0.f;
+                    mesh.materials[mesh.material_count].roughness = 1.0f;
+                    mesh.materials[mesh.material_count].program_id = shader;
+                    mesh.material_count++;
+                }
+
+                model.meshes[model.mesh_count++] = mesh;
+            }
+            models.push_back(model);
+        }
+
+        WX_CORE_INFO("Load Complete!");
+        cgltf_free(data);
+        return models;
     }
 
     //Mesh
@@ -306,19 +512,14 @@ namespace wx {
      * @return
      */
 
-    ShaderProgram::ShaderProgram(const char *name) {
-        this->vertexSource = AssetsLoader::LoadShader(name, VERTEX_SHADER);
-        this->fragmentSource = AssetsLoader::LoadShader(name, FRAGMENT_SHADER);
-        Upload();
-    }
-
-    unsigned int ShaderProgram::CreateShader(GLuint type) {
+    unordered_map<string,int> ShaderProgram::uniforms;
+    unsigned int ShaderProgram::CreateShader(GLuint type,const char* source) {
         unsigned int shader = glCreateShader(type);
         if (type==GL_VERTEX_SHADER){
-            glShaderSource(shader,1,&vertexSource, nullptr);
+            glShaderSource(shader,1,&source, nullptr);
 
         }else if(type==GL_FRAGMENT_SHADER){
-            glShaderSource(shader,1,&fragmentSource, nullptr);
+            glShaderSource(shader,1,&source, nullptr);
         }else{
             WX_CORE_CRITICAL("Unsupported Shader type {}",type);
             exit(-1001);
@@ -335,10 +536,14 @@ namespace wx {
         return shader;
     }
 
-    unsigned int ShaderProgram::CreateProgram(unsigned int vertShader, unsigned int fragShader) {
+    unsigned int ShaderProgram::LoadShader(const char* name) {
         unsigned int program = glCreateProgram();
-        glAttachShader(program,vertShader);
-        glAttachShader(program,fragShader);
+        const char* vertShaderSource = AssetsLoader::LoadShader(name,ShaderType::VERTEX_SHADER);
+        const char* fragShaderSource = AssetsLoader::LoadShader(name,ShaderType::FRAGMENT_SHADER);
+        unsigned vertexShader = CreateShader(GL_VERTEX_SHADER,vertShaderSource);
+        unsigned fragmentShader = CreateShader(GL_FRAGMENT_SHADER,fragShaderSource);
+        glAttachShader(program, vertexShader);
+        glAttachShader(program, fragmentShader);
         glLinkProgram(program);
         int success;
         char info[512];
@@ -348,35 +553,31 @@ namespace wx {
             WX_CORE_CRITICAL(info);
             exit(-1002);
         }
+
+        glDeleteShader(vertexShader);
+        glDeleteShader(fragmentShader);
         return program;
     }
 
-    void ShaderProgram::Upload() {
-        unsigned vertexShader = CreateShader(GL_VERTEX_SHADER);
-        unsigned fragmentShader = CreateShader(GL_FRAGMENT_SHADER);
-        shaderProgram = CreateProgram(vertexShader,fragmentShader);
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
-    }
-
-    void ShaderProgram::Bind() const {
-        glUseProgram(shaderProgram);
+    void ShaderProgram::Bind(uint32_t pid) {
+        glUseProgram(pid);
     }
 
     void ShaderProgram::Unbind() {
         glUseProgram(0);
     }
 
-    void ShaderProgram::Cleanup() const {
-        cout << "Clean Program " << shaderProgram << endl;
-        glDeleteProgram(shaderProgram);
+    void ShaderProgram::Cleanup(uint32_t pid) {
+        cout << "Clean Program " << pid << endl;
+        glDeleteProgram(pid);
     }
 
-    void ShaderProgram::SetFloat(string name, float value) {
+    void ShaderProgram::SetFloat(uint32_t pid,const string& _name, float value) {
         int location = 0;
+        string name = to_string(pid) + "_" + _name;
         if(uniforms.count(name)==0){
             cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(shaderProgram,name.c_str());
+            location = glGetUniformLocation(pid,_name.c_str());
             cout << "Uniform[" << name << "] Location=" << location << endl;
             uniforms[name]=location;
         }else{
@@ -384,12 +585,12 @@ namespace wx {
         }
         glUniform1f(location,value);
     }
-
-    void ShaderProgram::SetMat4(string name, float *value) {
+    void ShaderProgram::SetMat4(uint32_t pid,const string& _name, float *value) {
         int location = 0;
+        string name = to_string(pid) + "_" + _name;
         if(uniforms.count(name)==0){
             cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(shaderProgram,name.c_str());
+            location = glGetUniformLocation(pid,_name.c_str());
             cout << "Uniform[" << name << "] Location=" << location << endl;
             uniforms[name]=location;
         }else{
@@ -397,11 +598,12 @@ namespace wx {
         }
         glUniformMatrix4fv(location,1,GL_FALSE,value);
     }
-    void ShaderProgram::SetVec4(string name, float *value) {
+    void ShaderProgram::SetVec4(uint32_t pid,const string& _name, float *value) {
         int location = 0;
+        string name = to_string(pid) + "_" + _name;
         if(uniforms.count(name)==0){
             cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(shaderProgram,name.c_str());
+            location = glGetUniformLocation(pid,_name.c_str());
             cout << "Uniform[" << name << "] Location=" << location << endl;
             uniforms[name]=location;
         }else{
@@ -409,23 +611,18 @@ namespace wx {
         }
         glUniform4fv(location,1,value);
     }
-
-
-    void ShaderProgram::SetVec3(string name, float *value) {
+    void ShaderProgram::SetVec3(uint32_t pid,const string& _name, float *value) {
         int location = 0;
+        string name = to_string(pid) + "_" + _name;
         if(uniforms.count(name)==0){
             cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(shaderProgram,name.c_str());
+            location = glGetUniformLocation(pid,_name.c_str());
             cout << "Uniform[" << name << "] Location=" << location << endl;
             uniforms[name]=location;
         }else{
             location = uniforms[name];
         }
         glUniform3fv(location,1,value);
-    }
-
-    ShaderProgram::~ShaderProgram() {
-        cout << "Drop ShaderProgram" << endl;
     }
 
     QuadTreeNode *Terrain::CreateNewChunk(size_t depth, vec3 center, float bound, QuadTreeNode *parent) {
@@ -555,7 +752,7 @@ namespace wx {
     };
 
     Debug::Debug() {
-        shaderProgram = new ShaderProgram("font");
+        shaderProgram = ShaderProgram::LoadShader("font");
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
 
@@ -575,10 +772,10 @@ namespace wx {
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-        shaderProgram->Bind();
-        shaderProgram->SetVec3("color", reinterpret_cast<float *>(&color));
+        ShaderProgram::Bind(shaderProgram);
+        ShaderProgram::SetVec3(shaderProgram,"color", value_ptr(color));
         mat4 P = ortho(0.f,1280.f,720.f,0.f);
-        shaderProgram->SetMat4("P",reinterpret_cast<float *>(&P));
+        ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
         glActiveTexture(GL_TEXTURE0);
         glBindVertexArray(VAO);
 

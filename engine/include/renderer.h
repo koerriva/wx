@@ -69,6 +69,34 @@ namespace wx {
         }
     };
 
+    typedef struct {
+        vec3 position;
+        vec3 rotation;
+        vec3 location;
+    } transform_t;
+
+    typedef struct{
+        uint32_t program_id;
+        vec4 base_color{1.f};
+        float metallic = 0;
+        float roughness = 0;
+    } material_t;
+
+    typedef struct{
+        uint32_t vao;
+        int vertices_count = 0;
+        int indices_count = 0;
+        uint32_t indices_type;
+        material_t materials[64];
+        uint32_t material_count = 0;
+    } mesh_t;
+
+    typedef struct {
+        mesh_t meshes[64];
+        uint32_t mesh_count = 0;
+        transform_t  transform;
+    } model_t;
+
     class Mesh
     {
     private:
@@ -114,26 +142,28 @@ namespace wx {
 
     class ShaderProgram{
     private:
-        const char* vertexSource;
-        const char* fragmentSource;
-        unsigned int shaderProgram=0;
-        unordered_map<string,int> uniforms;
-
-        unsigned int CreateShader(GLuint type);
-        static unsigned int CreateProgram(unsigned vertShader,unsigned fragShader);
-        void Upload();
+        uint32_t value;
+        static unordered_map<string,int> uniforms;
+        static unsigned int CreateShader(GLuint type,const char* source);
 
     public:
-        ShaderProgram(const char* name);
-        ~ShaderProgram();
-        void Bind() const;
-        static void Unbind();
-        void Cleanup() const;
+        operator uint32_t() {return value;}
+        ShaderProgram operator=(uint32_t v){
+            ShaderProgram s;
+            s.value = v;
+            return s;
+        }
 
-        void SetFloat(string name,float value);
-        void SetMat4(string name,float* value);
-        void SetVec4(string name,float* value);
-        void SetVec3(string name,float* value);
+        static uint32_t LoadShader(const char* name);
+
+        static void Bind(uint32_t pid) ;
+        static void Unbind() ;
+        static void Cleanup(uint32_t pid);
+
+        static void SetFloat(uint32_t pid,const string& name,float value);
+        static void SetMat4(uint32_t pid,const string& name,float* value);
+        static void SetVec4(uint32_t pid,const string& name,float* value);
+        static void SetVec3(uint32_t pid,const string& name,float* value);
     };
 
     struct Patch{
@@ -228,13 +258,16 @@ namespace wx {
         void Init();
         void SetWireframeMode();
         void SetShaderMode();
-        void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram* shaderProgram);
-        void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram* shaderProgram);
+        void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram);
+        void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram);
+        void Render(const Window* window,const Camera* camera,vector<model_t>& models);
+
+        static vector<model_t> LoadModelFromGLTF(const char* filename);
     };
 
     class Debug{
     private:
-        ShaderProgram* shaderProgram;
+        uint32_t shaderProgram;
         vector<float> vertices;
         GLuint VAO{},VBO{};
     public:

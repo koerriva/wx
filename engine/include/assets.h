@@ -37,6 +37,7 @@ namespace wx {
         void init();
         const char* loadShader(const char* name,int type);
         const unsigned char* loadTexture(const char* name,int* len);
+        const unsigned char* loadRawData(const char* name,int* len);
         void cleanup(){
             data.clear();
         }
@@ -56,6 +57,10 @@ namespace wx {
 
         static const unsigned char* LoadTexture(const char* name,int* len){
             return _instance->loadTexture(name,len);
+        }
+
+        static const unsigned char* LoadRawData(const char* name,int* len){
+            return _instance->loadRawData(name,len);
         }
 
         static void Cleanup(){

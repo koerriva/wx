@@ -31,8 +31,8 @@ namespace wx {
         vector<Texture> textures;
         Timer* timer;
         Terrain* terrain;
-        ShaderProgram* baseShader;
-        ShaderProgram* terrainShader;
+        ShaderProgram baseShader;
+        ShaderProgram terrainShader;
 
         float updateRate = 0.f;
         float frameTime = 0.f;

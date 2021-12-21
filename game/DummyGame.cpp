@@ -20,7 +20,7 @@ namespace wx {
         WX_INFO("DummyGame Init...");
         renderer->Init();
 
-        this->baseShader = new ShaderProgram("base");
+        this->baseShader = ShaderProgram::LoadShader("base");
         meshList.push_back(Mesh::Sphere(EARTH_RADIUS,72,36));
 
         int len;
@@ -31,7 +31,7 @@ namespace wx {
 
         this->terrain = new Terrain();
         this->terrain->Init();
-        this->terrainShader = new ShaderProgram("base");
+        this->terrainShader = ShaderProgram::LoadShader("terrain");
 
         this->camera = new Camera(vec3{0,25,500});
         this->camera->Rotate(0,70);
@@ -146,7 +146,7 @@ namespace wx {
 
         delete terrain;
 
-        delete terrainShader;
+        ShaderProgram::Cleanup(terrainShader);
 
         delete camera;
 

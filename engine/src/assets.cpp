@@ -85,7 +85,21 @@ namespace wx {
             *len = data[filepath].size();
             return data[filepath].data();
         }else{
-            WX_CORE_INFO("Can't Find Texture {}",dir.string());
+            WX_CORE_ERROR("Can't Find Texture {}",dir.string());
+            return nullptr;
+        }
+    }
+
+    const unsigned char *AssetsLoader::loadRawData(const char *name, int *len) {
+        string filepath = string(root).append(FILE_SPLITER).append(name);
+        path dir(filepath);
+        WX_CORE_INFO("Find Raw {}",dir.string());
+
+        if(data.count(filepath)>0){
+            *len = data[filepath].size();
+            return data[filepath].data();
+        }else{
+            WX_CORE_ERROR("Can't Find Raw {}",dir.string());
             return nullptr;
         }
     }
