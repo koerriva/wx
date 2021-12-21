@@ -4,7 +4,7 @@
 
 #ifndef WX_LOG_H
 #define WX_LOG_H
-#define SPDLOG_FMT_EXTERNAL
+
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/ostr.h>
 
