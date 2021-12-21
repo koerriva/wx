@@ -6,11 +6,9 @@ int main(int argc,char** argv) {
     system("chcp 65001");
 
     wx::Log::Init();
-    wx::ResourceLoader::Init();
-
     WX_INFO("我的游戏引擎 0.2");
     wx::DummyGame game;
-    wx::GameEngine engine("我的游戏引擎 0.2.0",1280,720, false,&game);
+    wx::GameEngine engine("我的游戏引擎 0.2.0",1280,720, true,&game);
     engine.Run();
 
 //    int w=4000,h=2000,comp=3;

@@ -10,6 +10,9 @@
 namespace wx {
     class DummyGame : public IGameLogic{
     public:
+        DummyGame();
+        ~DummyGame();
+
         void Init() override;
 
         void Input(Window *window) override;
@@ -19,6 +22,26 @@ namespace wx {
         void Render(Window *window, float elapsedTime) override;
 
         void Cleanup() override;
+
+    private:
+        Renderer* renderer;
+        Camera* camera = nullptr;
+        Debug* debug = nullptr;
+        vector<Mesh> meshList;
+        vector<Texture> textures;
+        Timer* timer;
+        Terrain* terrain;
+        ShaderProgram* baseShader;
+        ShaderProgram* terrainShader;
+
+        float updateRate = 0.f;
+        float frameTime = 0.f;
+        int frameCount = 0;
+        int frameRate = 0;
+        vec2 cameraState {0.f,0.f};
+        vec2 cameraDirection{0.f,0.f};
+        float cameraLen = 0;
+        int LOD = 1;
     };
 }
 

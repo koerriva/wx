@@ -22,15 +22,17 @@ namespace wx {
     struct FileInfo {
         long long size=0;
         std::string ext;
+        time_t mtime;
+        std::string path;
     };
-    class ResourceLoader{
+    class AssetsLoader{
     private:
         const char* root = "data";
         std::unordered_map<std::string,FileInfo> info;
         std::unordered_map<std::string,std::vector<unsigned char>> data;
         void file_collector(const directory_entry& entry);
-        ResourceLoader()= default;;
-        static ResourceLoader* _instance;
+        AssetsLoader()= default;;
+        static AssetsLoader* _instance;
 
         void init();
         const char* loadShader(const char* name,int type);
@@ -39,12 +41,12 @@ namespace wx {
             data.clear();
         }
     public:
-        ~ResourceLoader(){
-            std::cout << "Drop ResourceLoader" << std::endl;
+        ~AssetsLoader(){
+            std::cout << "Drop AssetsLoader" << std::endl;
         };
 
         static void Init(){
-            _instance = new ResourceLoader();
+            _instance = new AssetsLoader();
             _instance->init();
         }
 

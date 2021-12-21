@@ -4,11 +4,12 @@
 
 #include "assets.h"
 #include "log.h"
+#include "sys/stat.h"
 
 namespace wx {
-    ResourceLoader* ResourceLoader::_instance = nullptr;
+    AssetsLoader* AssetsLoader::_instance = nullptr;
 
-    void ResourceLoader::file_collector(const directory_entry &entry) {
+    void AssetsLoader::file_collector(const directory_entry &entry) {
         if(entry.is_directory()){
             WX_CORE_INFO("Dir {}",entry.path().string());
             directory_iterator list(entry.path());
@@ -32,19 +33,23 @@ namespace wx {
                 file.close();
                 info[filename].ext = ext;
                 info[filename].size = buffer.size();
-//                    Logger::Info("File {},{}",filename,buffer.size());
+                struct stat file_state{};
+                stat(entry.path().string().c_str(),&file_state);
+                info[filename].mtime = file_state.st_mtime;
+                info[filename].path = entry.path().string();
+                WX_CORE_INFO("File {},{}",filename,buffer.size());
             }
         }
     }
 
-    void ResourceLoader::init() {
+    void AssetsLoader::init() {
         directory_iterator list(root);
         for (auto& entry:list){
             file_collector(entry);
         }
     }
 
-    const char *ResourceLoader::loadShader(const char *name, int type) {
+    const char *AssetsLoader::loadShader(const char *name, int type) {
         string file_ext;
         if(type==1){
             file_ext = ".vert";
@@ -71,7 +76,7 @@ namespace wx {
         }
     }
 
-    const unsigned char *ResourceLoader::loadTexture(const char *name, int *len) {
+    const unsigned char *AssetsLoader::loadTexture(const char *name, int *len) {
         string filepath = string(root).append(FILE_SPLITER).append("textures").append(FILE_SPLITER).append(name);
         path dir(filepath);
         WX_CORE_INFO("Find Texture {}",dir.string());

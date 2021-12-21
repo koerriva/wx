@@ -12,15 +12,17 @@ vec3 light_pos = vec3(5.0,5.0,0.0);
 vec3 light_color = vec3(1.0);
 vec3 ambient = vec3(0.3)*light_color;
 
-uniform sampler2D base_color_sampler;
-uniform sampler2D metallic_roughness_sampler;
+uniform vec4 base_color;
+uniform float metallic_factor;
+uniform float roughness_factor;
+
+uniform sampler2D texture0;
 
 void main(){
-    vec4 base_color = texture(base_color_sampler,v_TexCoord);
-    vec4 metallic_roughness_color = texture(metallic_roughness_sampler,v_TexCoord);
+    vec4 tex_color = texture(texture0,v_TexCoord);
 
     vec3 light_dir = normalize(light_pos-v_WorldPos);
 
     vec3 diffuse = max(dot(v_Normal,light_dir),0.0)*light_color;
-    FragColor = vec4(v_Color*(ambient+diffuse),1.0);
+    FragColor = base_color*vec4((ambient+diffuse)*tex_color.rgb,1.0);
 }

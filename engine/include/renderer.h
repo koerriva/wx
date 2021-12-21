@@ -132,6 +132,7 @@ namespace wx {
 
         void SetFloat(string name,float value);
         void SetMat4(string name,float* value);
+        void SetVec4(string name,float* value);
         void SetVec3(string name,float* value);
     };
 
@@ -229,6 +230,16 @@ namespace wx {
         void SetShaderMode();
         void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram* shaderProgram);
         void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram* shaderProgram);
+    };
+
+    class Debug{
+    private:
+        ShaderProgram* shaderProgram;
+        vector<float> vertices;
+        GLuint VAO{},VBO{};
+    public:
+        Debug();
+        void PrintScreen(vec2 pos,const char* text,vec3 color);
     };
 }
 

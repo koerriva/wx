@@ -5,6 +5,7 @@
 #include <iostream>
 #include "log.h"
 #include "renderer.h"
+#include "font.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -66,6 +67,9 @@ namespace wx {
         shaderProgram->SetMat4("V", reinterpret_cast<float *>(&V));
         shaderProgram->SetMat4("M", reinterpret_cast<float *>(&M));
 
+        vec4 base_color{1.0f};
+        shaderProgram->SetVec4("base_color", value_ptr(base_color));
+
         for (size_t i = 0; i < meshList.size(); i++)
         {
             auto& mesh = meshList[i];
@@ -98,6 +102,9 @@ namespace wx {
         shaderProgram->SetMat4("P", reinterpret_cast<float *>(&P));
         shaderProgram->SetMat4("V", reinterpret_cast<float *>(&V));
         shaderProgram->SetMat4("M", reinterpret_cast<float *>(&M));
+
+        glm::vec4 base_color{1.0f};
+        shaderProgram->SetVec4("base_color", value_ptr(base_color));
 
         terrain->Draw();
 
@@ -300,8 +307,8 @@ namespace wx {
      */
 
     ShaderProgram::ShaderProgram(const char *name) {
-        this->vertexSource = ResourceLoader::LoadShader(name,VERTEX_SHADER);
-        this->fragmentSource = ResourceLoader::LoadShader(name,FRAGMENT_SHADER);
+        this->vertexSource = AssetsLoader::LoadShader(name, VERTEX_SHADER);
+        this->fragmentSource = AssetsLoader::LoadShader(name, FRAGMENT_SHADER);
         Upload();
     }
 
@@ -390,6 +397,19 @@ namespace wx {
         }
         glUniformMatrix4fv(location,1,GL_FALSE,value);
     }
+    void ShaderProgram::SetVec4(string name, float *value) {
+        int location = 0;
+        if(uniforms.count(name)==0){
+            cout << "Find Uniform : " << name << endl;
+            location = glGetUniformLocation(shaderProgram,name.c_str());
+            cout << "Uniform[" << name << "] Location=" << location << endl;
+            uniforms[name]=location;
+        }else{
+            location = uniforms[name];
+        }
+        glUniform4fv(location,1,value);
+    }
+
 
     void ShaderProgram::SetVec3(string name, float *value) {
         int location = 0;
@@ -521,5 +541,77 @@ namespace wx {
             glDrawElements(GL_TRIANGLES,6,GL_UNSIGNED_INT, nullptr);
             glBindVertexArray(0);
         }
+    }
+
+    /**
+     * Debug
+     */
+    struct Character{
+        bool cached=false;
+        GLuint texture;
+        ivec2 size;
+        ivec2 bearing;
+        GLuint advance;
+    };
+
+    Debug::Debug() {
+        shaderProgram = new ShaderProgram("font");
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+
+        glGenBuffers(1, &VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), nullptr, GL_DYNAMIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,4*sizeof(float),nullptr);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    void Debug::PrintScreen(vec2 pos, const char* text, vec3 color) {
+        glEnable(GL_CULL_FACE);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        shaderProgram->Bind();
+        shaderProgram->SetVec3("color", reinterpret_cast<float *>(&color));
+        mat4 P = ortho(0.f,1280.f,720.f,0.f);
+        shaderProgram->SetMat4("P",reinterpret_cast<float *>(&P));
+        glActiveTexture(GL_TEXTURE0);
+        glBindVertexArray(VAO);
+
+        std::string chars = std::string(text);
+        for (auto it=chars.begin();it!=chars.end();++it) {
+            Character c = Font::GetChar(*it);
+            float x = pos.x+c.bearing.x*1.0f;
+            float y = pos.y+Font::PIXEL_SIZE+float((c.size.y-c.bearing.y))*1.0f;
+            auto w = float(c.size.x);
+            auto h = float(c.size.y);
+
+            //6个顶点
+            vertices ={
+                    x,y-h,0.0,0.0,
+                    x,y,0.0,1.0,
+                    x+w,y,1.0,1.0,
+
+                    x,y-h,0.0,0.0,
+                    x+w,y,1.0,1.0,
+                    x+w,y-h,1.0,0.0,
+            };
+
+            pos.x += c.advance>>6;
+
+            glBindTexture(GL_TEXTURE_2D,c.texture);
+            glBindBuffer(GL_ARRAY_BUFFER,VBO);
+            glBufferSubData(GL_ARRAY_BUFFER,0,vertices.size()*sizeof(float),vertices.data());
+            glDrawArrays(GL_TRIANGLES,0,6);
+        }
+        glBindVertexArray(0);
+        glBindTexture(GL_TEXTURE_2D,0);
+
+        glDisable(GL_CULL_FACE);
+        glDisable(GL_BLEND);
     }
 }

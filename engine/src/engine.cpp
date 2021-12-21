@@ -23,7 +23,7 @@ namespace wx {
         //窗口先初始化
         window->Init();
         //加载资源
-        ResourceLoader::Init();
+        AssetsLoader::Init();
         //加载字体
         Font::Init();
         //加载游戏
@@ -83,7 +83,7 @@ namespace wx {
     void GameEngine::Cleanup(){
         game->Cleanup();
 
-        ResourceLoader::Cleanup();
+        AssetsLoader::Cleanup();
         Font::Cleanup();
 
         //窗口必须最后清理，防止OpenGL Context关闭。
