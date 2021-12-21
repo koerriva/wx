@@ -6,5 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 add_subdirectory(engine)
 add_subdirectory(game)
 add_subdirectory(glad)
+add_subdirectory(noise)
 
-file(COPY data DESTINATION .)
+file(COPY data DESTINATION ${PROJECT_BINARY_DIR}/game)

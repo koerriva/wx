@@ -3,31 +3,14 @@
 #include "DummyGame.h"
 
 int main(int argc,char** argv) {
-    // system("chcp 65001");
-//    auto frameStart = duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
-//    Logger::Info("frameStart {}",frameStart);
-//    auto frameEnd = frameStart+1000000000;
-//    Logger::Info("frameEnd {}",frameEnd);
-//    long long now = frameStart;
-//    while (now <  frameEnd){
-//        this_thread::sleep_for(milliseconds(100));
-//        now = duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
-//        Logger::Info("now {}",now);
-//    }
-//    vector<int> arr={1,2,3,4};
-//    for(auto it=arr.begin();it!=arr.end();it++){
-//        cout << *it << endl;
-//        if(*it==2){
-//            arr.push_back(6);
-//        }
-//    }
+    system("chcp 65001");
 
     wx::Log::Init();
     wx::ResourceLoader::Init();
 
-    WX_INFO("我的游戏引擎 0.1");
+    WX_INFO("我的游戏引擎 0.2");
     wx::DummyGame game;
-    wx::GameEngine engine("我的游戏引擎 0.1",800,600, false,&game);
+    wx::GameEngine engine("我的游戏引擎 0.2.0",1280,720, false,&game);
     engine.Run();
 
 //    int w=4000,h=2000,comp=3;

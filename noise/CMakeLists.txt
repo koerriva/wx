@@ -1,0 +1,7 @@
+aux_source_directory(src NOISE_SRC)
+aux_source_directory(src/model NOISE_SRC)
+aux_source_directory(src/module NOISE_SRC)
+include_directories(include)
+include_directories(include/model)
+include_directories(include/module)
+add_library(noise ${NOISE_SRC})
