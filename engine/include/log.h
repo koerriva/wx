@@ -6,6 +6,7 @@
 #define WX_LOG_H
 
 #include <spdlog/spdlog.h>
+#include <spdlog/async.h>
 #include <spdlog/fmt/ostr.h>
 
 namespace wx {
@@ -14,7 +15,7 @@ namespace wx {
         static std::shared_ptr<spdlog::logger> s_CoreLogger;
         static std::shared_ptr<spdlog::logger> s_ClientLogger;
     public:
-        static void Init();
+        static void Init(bool async = false);
         inline static std::shared_ptr<spdlog::logger>& GetCoreLogger() { return s_CoreLogger; }
         inline static std::shared_ptr<spdlog::logger>& GetClientLogger() { return s_ClientLogger; }
     };
