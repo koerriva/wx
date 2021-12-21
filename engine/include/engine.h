@@ -13,6 +13,7 @@
 #include <glm/ext.hpp>
 
 #include "log.h"
+#include "ecs.h"
 #include "window.h"
 #include "renderer.h"
 
