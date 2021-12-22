@@ -21,7 +21,7 @@ namespace wx {
             this->models.push_back(m);
         }
 
-        camera = new Camera({3.0,3.0,10.0});
+        camera = new Camera({0.0,2.0,10.0});
     }
 
     void GLTFViewer::Input(Window *window) {
