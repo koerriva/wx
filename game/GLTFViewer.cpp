@@ -15,9 +15,16 @@ namespace wx {
     void GLTFViewer::Init() {
         WX_INFO("GLFTViewer Init");
         renderer->Init();
-        this->models = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
-        auto sets = Renderer::LoadModelFromGLTF("model\\CesiumDrone.glb");
-        for (auto& m:sets) {
+        auto Scene_sets = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
+        auto CesiumDrone_sets = Renderer::LoadModelFromGLTF("model\\CesiumDrone.glb");
+        auto Snake = Renderer::LoadModelFromGLTF("model\\Snake.gltf");
+        for (auto& m:Scene_sets) {
+            this->models.push_back(m);
+        }
+        for (auto& m:CesiumDrone_sets) {
+            this->models.push_back(m);
+        }
+        for (auto& m : Snake) {
             this->models.push_back(m);
         }
 

@@ -70,9 +70,9 @@ namespace wx {
     };
 
     typedef struct {
-        vec3 position;
-        vec3 rotation;
-        vec3 location;
+        vec3 position{0};
+        vec3 rotation{0};
+        vec3 scale{1};
     } transform_t;
 
     typedef struct{

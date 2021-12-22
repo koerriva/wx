@@ -132,9 +132,12 @@ namespace wx {
         P = glm::perspective(glm::radians(60.f),aspect,.1f,1000.f);
         V = camera->GetViewMatrix();
 
-        M = glm::scale(M,glm::vec3(1.0f));
-
         for (auto& model:models) {
+            M = translate(mat4{1},model.transform.position)
+                    * rotate(mat4{1},model.transform.rotation.x,vec3{1.,0.,0.})
+                    * rotate(mat4{1},model.transform.rotation.y,vec3{0.,1.,0.})
+                    * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
+                    * scale(mat4{1},model.transform.scale);
             for (int i = 0; i < model.mesh_count; ++i) {
                 mesh_t& mesh = model.meshes[i];
                 material_t& mat = mesh.materials[0];
@@ -180,17 +183,55 @@ namespace wx {
             return models;
         }
 
-        if(data->meshes_count<1){
+        if(data->nodes_count<1){
             return models;
         }
 
-        WX_CORE_INFO("Upload BaseShader ..." );
-        uint32_t  shader = ShaderProgram::LoadShader("base");
+        WX_CORE_INFO("Upload Shader ..." );
 
-        for (int i = 0; i < data->meshes_count; ++i) {
-            cgltf_mesh cmesh = data->meshes[i];
+        unordered_map<const char*,material_t> materials;
+
+        uint32_t shader = ShaderProgram::LoadShader("pbr");
+        for (int i = 0; i < data->materials_count; ++i) {
+            cgltf_material* cmat =  &data->materials[i];
+            material_t material{};
+            WX_CORE_TRACE("Upload Material {}",cmat->name);
+            cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
+
+            material.base_color = {baseColor[0],baseColor[1],baseColor[2],baseColor[3]};
+            material.metallic = cmat->pbr_metallic_roughness.metallic_factor;
+            material.roughness = cmat->pbr_metallic_roughness.roughness_factor;
+            material.program_id = shader;
+
+            materials[cmat->name] = material;
+        }
+
+        WX_CORE_INFO("Total model {}",data->nodes_count);
+        for (int i = 0; i < data->nodes_count; ++i) {
+            cgltf_node cnode = data->nodes[i];
+            cgltf_mesh* cmesh = cnode.mesh;
+
+            if(!cnode.mesh){
+                continue;
+            }
+
             model_t model;
-            for (int i = 0; i < cmesh.primitives_count; ++i) {
+
+            if(cnode.has_translation){
+                model.transform.position = {cnode.translation[0],cnode.translation[1],cnode.translation[2]};
+            }
+
+            if(cnode.has_rotation){
+                vec4 quatRotation{cnode.rotation[0],cnode.rotation[1],cnode.rotation[2],cnode.rotation[3]};
+                vec3 eulerRotation = eulerAngles(quat(quatRotation));
+                model.transform.rotation = eulerRotation;
+            }
+
+            if(cnode.has_scale){
+                model.transform.scale = {cnode.scale[0],cnode.scale[1],cnode.scale[2]};
+            }
+
+            for (int j = 0; j < cmesh->primitives_count; ++j) {
                 mesh_t mesh;
 
                 std::cout << "Upload Mesh ..." << std::endl;
@@ -201,17 +242,17 @@ namespace wx {
                 uint32_t vbo = 0;
 
 
-                std::cout << "Mesh : " << cmesh.name << std::endl;
+                std::cout << "Mesh : " << cmesh->name << std::endl;
 
-                cgltf_primitive primitive = cmesh.primitives[i];
+                cgltf_primitive primitive = cmesh->primitives[j];
 
                 cgltf_accessor* position_accessor = nullptr;
                 cgltf_accessor* normal_accessor = nullptr;
                 cgltf_accessor* texcoord_accessor = nullptr;
                 cgltf_accessor* indices_accessor = primitive.indices;
 
-                for (int i = 0; i < primitive.attributes_count; ++i) {
-                    auto attr = primitive.attributes[i];
+                for (int k = 0; k < primitive.attributes_count; ++k) {
+                    auto attr = primitive.attributes[k];
                     std::cout << "Attr L : " << attr.name << std::endl;
                     if(strcmp(attr.name,"POSITION")==0){
                         std::cout << "Attr : " << attr.name << std::endl;
@@ -291,14 +332,9 @@ namespace wx {
 
                 if(primitive.material){
                     if(primitive.material->has_pbr_metallic_roughness){
-                        std::cout << "Upload Material ..." << std::endl;
                         cgltf_material* cmat = primitive.material;
-                        cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
-                        mesh.materials[mesh.material_count].base_color = {baseColor[0],baseColor[1],baseColor[2],baseColor[3]};
-                        mesh.materials[mesh.material_count].metallic = cmat->pbr_metallic_roughness.metallic_factor;
-                        mesh.materials[mesh.material_count].roughness = cmat->pbr_metallic_roughness.roughness_factor;
-                        mesh.materials[mesh.material_count].program_id = shader;
-
+                        WX_CORE_TRACE("Set Material {}",cmat->name);
+                        mesh.materials[mesh.material_count] = materials[cmat->name];
                         mesh.material_count++;
                     }
                 }else{
