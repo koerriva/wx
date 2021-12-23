@@ -152,9 +152,20 @@ namespace wx {
                 ShaderProgram::SetVec3(shaderProgram,"cameraPos", value_ptr(camPos));
 
                 ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
+                ShaderProgram::SetInt(shaderProgram,"has_albedo_texture",mat.has_albedo_texture);
+                if(mat.has_albedo_texture){
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
+                }
                 ShaderProgram::SetFloat(shaderProgram, "metallic", mat.metallic);
                 ShaderProgram::SetFloat(shaderProgram, "roughness", mat.roughness);
                 ShaderProgram::SetFloat(shaderProgram,"ao",mat.ao);
+
+                ShaderProgram::SetInt(shaderProgram,"has_metallic_roughness_texture",mat.has_metallic_roughness_texture);
+                if(mat.has_metallic_roughness_texture){
+                    glActiveTexture(GL_TEXTURE0+1);
+                    glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
+                }
 
                 glBindVertexArray(mesh.vao);
                 glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
@@ -203,11 +214,46 @@ namespace wx {
             cgltf_material* cmat =  &data->materials[i];
             material_t material{};
             WX_CORE_TRACE("Upload Material {}",cmat->name);
-            cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
+            cgltf_texture_view baseColorTexture = cmat->pbr_metallic_roughness.base_color_texture;
+            if(baseColorTexture.texture){
+                material.has_albedo_texture = 1;
+                material.albedo_texture_index = baseColorTexture.texcoord;
 
-            material.albedo = {baseColor[0], baseColor[1], baseColor[2], baseColor[3]};
-            material.metallic = cmat->pbr_metallic_roughness.metallic_factor;
-            material.roughness = cmat->pbr_metallic_roughness.roughness_factor;
+                char * img_type = baseColorTexture.texture->image->mime_type;
+
+                int data_size = baseColorTexture.texture->image->buffer_view->size;
+                int data_offset = baseColorTexture.texture->image->buffer_view->offset;
+                void * data = (uint8 *)(baseColorTexture.texture->image->buffer_view->buffer->data) + data_offset;
+                int min_filter = baseColorTexture.texture->sampler->min_filter;
+                int mag_filter = baseColorTexture.texture->sampler->mag_filter;
+                int warp_s = baseColorTexture.texture->sampler->wrap_s;
+                int warp_t = baseColorTexture.texture->sampler->wrap_t;
+                material.albedo_texture = Texture::Load((unsigned char*)data,data_size,{min_filter,mag_filter},{warp_s,warp_t});
+            }else{
+                cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
+                material.albedo = {baseColor[0], baseColor[1], baseColor[2], baseColor[3]};
+            }
+
+            cgltf_texture_view metallicRoughnessTexture = cmat->pbr_metallic_roughness.metallic_roughness_texture;
+            if(metallicRoughnessTexture.texture){
+                material.has_metallic_roughness_texture = 1;
+                material.metallic_roughness_texture_index = metallicRoughnessTexture.texcoord;
+
+                char * img_type = metallicRoughnessTexture.texture->image->mime_type;
+
+                int data_size = metallicRoughnessTexture.texture->image->buffer_view->size;
+                int data_offset = metallicRoughnessTexture.texture->image->buffer_view->offset;
+                void * data = (uint8 *)(metallicRoughnessTexture.texture->image->buffer_view->buffer->data) + data_offset;
+                int min_filter = metallicRoughnessTexture.texture->sampler->min_filter;
+                int mag_filter = metallicRoughnessTexture.texture->sampler->mag_filter;
+                int warp_s = metallicRoughnessTexture.texture->sampler->wrap_s;
+                int warp_t = metallicRoughnessTexture.texture->sampler->wrap_t;
+                material.metallic_roughness_texture = Texture::Load((unsigned char*)data,data_size,{min_filter,mag_filter},{warp_s,warp_t});
+            }else{
+                material.metallic = cmat->pbr_metallic_roughness.metallic_factor;
+                material.roughness = cmat->pbr_metallic_roughness.roughness_factor;
+            }
+
             material.program_id = shader;
 
             materials[cmat->name] = material;
@@ -549,6 +595,29 @@ namespace wx {
         glDeleteTextures(1,&texture);
     }
 
+    uint32_t Texture::Load(const unsigned char *buffer, int len,ivec2 filter,ivec2 warp) {
+        int width,height,comp;
+        uint32_t texture;
+        unsigned char* data = stbi_load_from_memory(buffer,len,&width,&height,&comp,0);
+        WX_CORE_INFO("Image Info width={}, height={}, channels={}",width,height,comp);
+        glGenTextures(1,&texture);
+        //为当前绑定的纹理对象设置环绕、过滤方式
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, warp.x!=0?warp.x:GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, warp.y!=0?warp.y:GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter.x!=0?filter.x:GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter.y!=0?filter.y:GL_LINEAR);
+        //生成纹理
+        glBindTexture(GL_TEXTURE_2D,texture);
+        glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+        stbi_image_free(data);
+        return texture;
+    }
+
     /**
      * ShaderProgram
      * @param type
@@ -666,6 +735,20 @@ namespace wx {
             location = uniforms[name];
         }
         glUniform3fv(location,1,value);
+    }
+
+    void ShaderProgram::SetInt(uint32_t pid, const string& _name, int value) {
+        int location = 0;
+        string name = to_string(pid) + "_" + _name;
+        if(uniforms.count(name)==0){
+            cout << "Find Uniform : " << name << endl;
+            location = glGetUniformLocation(pid,_name.c_str());
+            cout << "Uniform[" << name << "] Location=" << location << endl;
+            uniforms[name]=location;
+        }else{
+            location = uniforms[name];
+        }
+        glUniform1i(location,value);
     }
 
     QuadTreeNode *Terrain::CreateNewChunk(size_t depth, vec3 center, float bound, QuadTreeNode *parent) {

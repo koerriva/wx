@@ -24,7 +24,7 @@ namespace wx {
             this->models.push_back(m);
         }
         for (auto& m:CesiumDrone_sets) {
-            m.transform.position += vec3(4);
+            m.transform.position += vec3(3,3,1);
             this->models.push_back(m);
         }
         for (auto& m : Snake) {

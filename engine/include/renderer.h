@@ -78,9 +78,15 @@ namespace wx {
     typedef struct{
         uint32_t program_id;
         vec4 albedo{1.f};
-        float metallic = 0;
-        float roughness = 0;
+        int has_albedo_texture = 0;
+        uint32_t albedo_texture;
+        int albedo_texture_index = 0;
+        float metallic = 1.0;
+        float roughness = 1.0;
         float ao = 1.0;
+        int has_metallic_roughness_texture = 0;
+        uint32_t metallic_roughness_texture;
+        int metallic_roughness_texture_index;
     } material_t;
 
     typedef struct{
@@ -133,6 +139,7 @@ namespace wx {
             cout << "Drop Texture" << endl;
         }
 
+        static uint32_t Load(const unsigned char* buffer,int len,ivec2 filter,ivec2 warp);
         void Bind() const;
         void Cleanup();
     };
@@ -165,6 +172,7 @@ namespace wx {
         static void SetMat4(uint32_t pid,const string& name,float* value);
         static void SetVec4(uint32_t pid,const string& name,float* value);
         static void SetVec3(uint32_t pid,const string& name,float* value);
+        static void SetInt(uint32_t pid, const string& name, int value);
     };
 
     struct Patch{

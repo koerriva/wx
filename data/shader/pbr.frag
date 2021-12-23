@@ -8,17 +8,22 @@ in vec3 v_Color;
 in vec3 v_WorldPos;
 in vec3 v_Normal;
 
-vec3 light_pos = vec3(0.0,5.0,-5.0);
+vec3 light_pos = vec3(0.0,5.0,-1.0);
 vec3 light_color = vec3(10.0);
 
 uniform vec3 cameraPos;
 
 //反射颜色 - 可以换成贴图需要从sRGB 转换到 linerRGB
 uniform vec4  albedo;
+uniform int has_albedo_texture;
+uniform sampler2D albedo_texture;
 //金属度 可以换成贴图
 uniform float metallic;
 //粗糙度 可以换成贴图
 uniform float roughness;
+uniform int has_metallic_roughness_texture;
+uniform sampler2D metallic_roughness_texture;
+
 //环境光遮蔽 - 可以换成贴图需要从sRGB 转换到 linerRGB
 uniform float ao;
 
@@ -67,6 +72,19 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 }
 
 void main(){
+    vec4 albedo_factor = albedo;
+    if(has_albedo_texture==1){
+        albedo_factor = texture(albedo_texture,v_TexCoord);
+    }
+
+    float metallic_factor = metallic;
+    float roughness_factor = roughness;
+    if(has_metallic_roughness_texture==1){
+        vec2 mr = texture(metallic_roughness_texture,v_TexCoord).bg;
+        metallic_factor = mr.x;
+        roughness_factor = mr.y;
+    }
+
     vec3 N = normalize(v_Normal);
     vec3 V = normalize(cameraPos - v_WorldPos); //出射光线
 
@@ -81,11 +99,11 @@ void main(){
         vec3 radiance = light_color * attenuation;
 
         vec3 F0 = vec3(0.04);//非金属材质默认0.04
-        F0 = mix(F0,albedo.rgb,metallic);
+        F0 = mix(F0,albedo_factor.rgb,metallic_factor);
         vec3 F = fresnelSchlick(max(dot(H,V),0.0),F0);
 
-        float NDF = DistributionGGX(N,H,roughness);
-        float G = GeometrySmith(V,L,H,roughness);
+        float NDF = DistributionGGX(N,H,roughness_factor);
+        float G = GeometrySmith(V,L,H,roughness_factor);
 
         vec3 nominator = NDF * G * F;
         float demoinator = 4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0) + 0.001;//加0.001防止除零
@@ -93,13 +111,13 @@ void main(){
 
         vec3 kS = F; //光被反射的比例
         vec3 kD = vec3(1.0) - kS;//光被折射的比例
-        kD *= 1.0 - metallic;
+        kD *= 1.0 - metallic_factor;
 
         float NdotL = max(dot(N,L),0.0);
-        Lo += (kD*albedo.rgb/PI + specular) * radiance * NdotL;
+        Lo += (kD*albedo_factor.rgb/PI + specular) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+    vec3 ambient = vec3(0.03) * albedo_factor.rgb * ao;
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//LDR to HDR
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
