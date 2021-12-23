@@ -13,7 +13,7 @@ namespace wx {
         GLTFViewer();
         ~GLTFViewer();
 
-        void Init() override;
+        void Init(Window *window) override;
 
         void Input(Window *window) override;
 

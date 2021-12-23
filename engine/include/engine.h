@@ -57,7 +57,7 @@ namespace wx {
 
     class IGameLogic{
     public:
-        virtual void Init() = 0;
+        virtual void Init(Window *window) = 0;
         virtual void Input(Window* window) = 0;
         virtual void Update(float elapsedTime) = 0;
         virtual void Render(Window* window,float elapsedTime) = 0;

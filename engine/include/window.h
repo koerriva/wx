@@ -66,6 +66,14 @@ namespace wx {
             }
         }
 
+        void SetCursor(unsigned char* icon_data,int w,int h,int xhot,int yhot){
+            GLFWimage img;
+            img.width = w;img.height = h;
+            img.pixels = icon_data;
+            auto cursor = glfwCreateCursor(&img,xhot,yhot);
+            glfwSetCursor(glfwWindow,cursor);
+        }
+
         void Cleanup();
 
         //Input

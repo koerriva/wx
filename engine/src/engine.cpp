@@ -27,7 +27,7 @@ namespace wx {
         //加载字体
         Font::Init();
         //加载游戏
-        game->Init();
+        game->Init(window);
     }
 
     void GameEngine::Run(){

@@ -9,7 +9,7 @@ in vec3 v_WorldPos;
 in vec3 v_Normal;
 
 vec3 light_pos = vec3(0.0,5.0,-5.0);
-vec3 light_color = vec3(5.0);
+vec3 light_color = vec3(10.0);
 
 uniform vec3 cameraPos;
 

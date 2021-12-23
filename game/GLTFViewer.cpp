@@ -2,7 +2,9 @@
 // Created by koerriva on 2021/12/21.
 //
 
+#include <stb/stb_image.h>
 #include "GLTFViewer.h"
+
 namespace wx {
     GLTFViewer::GLTFViewer() {
         renderer = new Renderer();
@@ -12,7 +14,7 @@ namespace wx {
 
     }
 
-    void GLTFViewer::Init() {
+    void GLTFViewer::Init(Window *window) {
         WX_INFO("GLFTViewer Init");
         renderer->Init();
         auto Scene_sets = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
@@ -30,6 +32,13 @@ namespace wx {
         }
 
         camera = new Camera({0.0,2.0,10.0});
+
+        int len;
+        const unsigned char * img_buffer = AssetsLoader::LoadTexture("cursor-32-2.png",&len);
+        int w,h,comp;
+        auto img = stbi_load_from_memory(img_buffer,len,&w,&h,&comp,0);
+//        window->SetCursor(img, w, h, 9, 3);
+        window->SetCursor(img, w, h, 7, 1);
     }
 
     void GLTFViewer::Input(Window *window) {

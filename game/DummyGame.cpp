@@ -16,7 +16,7 @@ namespace wx {
         cout << "Drop DummyGame" << endl;
     }
 
-    void DummyGame::Init(){
+    void DummyGame::Init(Window *window){
         WX_INFO("DummyGame Init...");
         renderer->Init();
 
