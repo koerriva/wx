@@ -58,6 +58,14 @@ namespace wx {
             glfwSetWindowShouldClose(glfwWindow,true);
         }
 
+        void ShowCursor(bool enable){
+            if(enable){
+                glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            }else{
+                glfwSetInputMode(glfwWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            }
+        }
+
         void Cleanup();
 
         //Input

@@ -68,8 +68,15 @@ namespace wx {
         cameraDirection.x = 0;
         cameraDirection.y = 0;
         if(window->GetMouseButtonPressed(M_RIGHT)){
+            window->ShowCursor(false);
+            hideCursor = true;
             cameraDirection.x = -static_cast<float>(window->GetMouseXOffset());
             cameraDirection.y = -static_cast<float>(window->GetMouseYOffset());
+        }else{
+            if(hideCursor){
+                hideCursor= false;
+                window->ShowCursor(true);
+            }
         }
     }
 
