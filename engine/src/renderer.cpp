@@ -71,7 +71,7 @@ namespace wx {
         ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
 
         vec4 base_color{1.0f};
-        ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(base_color));
+        ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(base_color));
 
         for (size_t i = 0; i < meshList.size(); i++)
         {
@@ -107,7 +107,7 @@ namespace wx {
         ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
 
         glm::vec4 base_color{1.0f};
-        ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(base_color));
+        ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(base_color));
 
         terrain->Draw();
 
@@ -116,7 +116,7 @@ namespace wx {
         glDisable(GL_DEPTH_TEST);
     }
 
-    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models) {
+    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, float delta) {
         glEnable(GL_DEPTH_TEST);
 //        glEnable(GL_CULL_FACE);
 //        glCullFace(GL_BACK);
@@ -128,7 +128,7 @@ namespace wx {
         }
 
         float aspect = window->GetAspect();
-        glm::mat4 P,V(1.0f),M(1.0f);
+        glm::mat4 P(1.0f),V(1.0f),M(1.0f);
         P = glm::perspective(glm::radians(60.f),aspect,.1f,1000.f);
         V = camera->GetViewMatrix();
 
@@ -147,10 +147,14 @@ namespace wx {
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
                 ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+                ShaderProgram::SetFloat(shaderProgram,"time",frame_time);
+                vec3 camPos = camera->Position();
+                ShaderProgram::SetVec3(shaderProgram,"cameraPos", value_ptr(camPos));
 
-                ShaderProgram::SetVec4(shaderProgram, "base_color", value_ptr(mat.base_color));
-                ShaderProgram::SetFloat(shaderProgram, "metallic_factor", mat.metallic);
-                ShaderProgram::SetFloat(shaderProgram, "roughness_factor", mat.roughness);
+                ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
+                ShaderProgram::SetFloat(shaderProgram, "metallic", mat.metallic);
+                ShaderProgram::SetFloat(shaderProgram, "roughness", mat.roughness);
+                ShaderProgram::SetFloat(shaderProgram,"ao",mat.ao);
 
                 glBindVertexArray(mesh.vao);
                 glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
@@ -161,6 +165,9 @@ namespace wx {
         }
 
         glDisable(GL_DEPTH_TEST);
+
+        this->frame_time += delta;
+        this->frame_count++;
     }
 
     vector<model_t> Renderer::LoadModelFromGLTF(const char *filename) {
@@ -198,7 +205,7 @@ namespace wx {
             WX_CORE_TRACE("Upload Material {}",cmat->name);
             cgltf_float* baseColor = cmat->pbr_metallic_roughness.base_color_factor;
 
-            material.base_color = {baseColor[0],baseColor[1],baseColor[2],baseColor[3]};
+            material.albedo = {baseColor[0], baseColor[1], baseColor[2], baseColor[3]};
             material.metallic = cmat->pbr_metallic_roughness.metallic_factor;
             material.roughness = cmat->pbr_metallic_roughness.roughness_factor;
             material.program_id = shader;
@@ -338,7 +345,7 @@ namespace wx {
                         mesh.material_count++;
                     }
                 }else{
-                    mesh.materials[mesh.material_count].base_color = {1.f,0.3f,0.3f,1.0f};
+                    mesh.materials[mesh.material_count].albedo = {1.f, 0.3f, 0.3f, 1.0f};
                     mesh.materials[mesh.material_count].metallic = 0.f;
                     mesh.materials[mesh.material_count].roughness = 1.0f;
                     mesh.materials[mesh.material_count].program_id = shader;

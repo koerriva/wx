@@ -27,6 +27,10 @@ namespace wx {
         Renderer* renderer;
         Camera* camera;
         vector<model_t> models;
+
+        vec2 cameraState {0.f,0.f};
+        vec2 cameraDirection{0.f,0.f};
+        float cameraLen = 0;
     };
 }
 

@@ -60,7 +60,7 @@ namespace wx {
             this->front = glm::normalize(_front);
         }
 
-        vec3 Position(){
+        vec3 Position() const {
             return this->position;
         }
 
@@ -77,9 +77,10 @@ namespace wx {
 
     typedef struct{
         uint32_t program_id;
-        vec4 base_color{1.f};
+        vec4 albedo{1.f};
         float metallic = 0;
         float roughness = 0;
+        float ao = 1.0;
     } material_t;
 
     typedef struct{
@@ -251,6 +252,9 @@ namespace wx {
     private:
         bool WIREFRAME_MODE = false;
         bool SHADER_MODE = true;
+
+        float frame_time = 0;
+        uint32_t frame_count = 0;
     public:
         Renderer(/* args */);
         ~Renderer();
@@ -260,7 +264,7 @@ namespace wx {
         void SetShaderMode();
         void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram);
         void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram);
-        void Render(const Window* window,const Camera* camera,vector<model_t>& models);
+        void Render(const Window* window,const Camera* camera,vector<model_t>& models,float delta);
 
         static vector<model_t> LoadModelFromGLTF(const char* filename);
     };
