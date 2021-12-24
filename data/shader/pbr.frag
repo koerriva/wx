@@ -117,7 +117,7 @@ void main(){
 
         vec3 L = normalize(light.position - v_WorldPos); //入射光方向
         if(light.type==DIRECTIONAL_LIGHT){
-            L = normalize(light.direction);
+            L = normalize(-light.direction);
         }
         vec3 H = normalize(V+L);
 
