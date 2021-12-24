@@ -136,7 +136,7 @@ void main(){
             vec3 formLightDir = -L;
             vec3 coneLightDir = normalize(light.direction);
             float ccosTheta = dot(formLightDir,coneLightDir);
-            float attenuation = 1.0 - (1.0-ccosTheta)/(1.0-light.cutoff);
+            float attenuation = 1.0 - (1.0-ccosTheta)/(1.001-light.cutoff);
             if(ccosTheta > light.cutoff){
                 radiance *= attenuation;
             }else{
