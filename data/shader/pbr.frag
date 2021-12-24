@@ -20,6 +20,7 @@ struct Light
     vec3 direction;//方向
     float intensity;
     float cutoff;
+    int has_shadow_map;
     Attenuation att;
 };
 
@@ -29,6 +30,7 @@ in vec2 v_TexCoord;
 in vec3 v_Color;
 in vec3 v_WorldPos;
 in vec3 v_Normal;
+in vec4 v_LightWorldPos[20];
 
 uniform int light_num;
 uniform Light lights[20];
@@ -50,6 +52,8 @@ uniform sampler2D metallic_roughness_texture;
 uniform float ao;
 
 //uniform sampler2D texture0;
+
+uniform sampler2D shadowMap[20];
 
 //菲涅尔函数-计算镜面反射和漫反射系数
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -91,6 +95,22 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     float ggx1  = GeometrySchlickGGX(NdotL, roughness);
 
     return ggx1 * ggx2;
+}
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    // 执行透视除法
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // 变换到[0,1]的范围
+    projCoords = projCoords * 0.5 + 0.5;
+    // 取得最近点的深度(使用[0,1]范围下的fragPosLight当坐标)
+    float closestDepth = texture(shadowMap[0], projCoords.xy).r;
+    // 取得当前片段在光源视角下的深度
+    float currentDepth = projCoords.z;
+    // 检查当前片段是否在阴影中
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+
+    return shadow;
 }
 
 void main(){
@@ -162,10 +182,15 @@ void main(){
         float NdotL = max(dot(N,L),0.0);
         Lo += (kD*albedo_factor.rgb/PI + specular) * radiance * NdotL;
     }
+    // 计算阴影
+    float shadow = ShadowCalculation(v_LightWorldPos[0]);
+    Lo *= 1.0 - shadow;
 
     vec3 ambient = vec3(0.03) * albedo_factor.rgb * ao;
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//LDR to HDR
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
+
+//    FragColor = vec4(texture(shadowMap[0],v_TexCoord).rrr,1.0);
     FragColor = vec4(color,1.0);
 }

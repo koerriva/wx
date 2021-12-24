@@ -116,7 +116,45 @@ namespace wx {
         glDisable(GL_DEPTH_TEST);
     }
 
+    void Renderer::Render(const Window *window, vector<model_t>& models, vector<light_t>& lights, float delta) {
+        for (auto & light:lights) {
+            glViewport(0, 0, light.shadow_map.width, light.shadow_map.height);
+            glBindFramebuffer(GL_FRAMEBUFFER, light.shadow_map.fbo);
+            glClear(GL_DEPTH_BUFFER_BIT);
+
+            float aspect = window->GetAspect();
+
+            uint32_t shaderProgram = light.shadow_map.shader;
+            ShaderProgram::Bind(shaderProgram);
+            ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(light.pv));
+
+            for (auto& model:models) {
+                mat4 M = translate(mat4{1},model.transform.position)
+                    * rotate(mat4{1},model.transform.rotation.x,vec3{1.,0.,0.})
+                    * rotate(mat4{1},model.transform.rotation.y,vec3{0.,1.,0.})
+                    * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
+                    * scale(mat4{1},model.transform.scale);
+
+                ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+
+                for (int i = 0; i < model.mesh_count; ++i) {
+                    mesh_t& mesh = model.meshes[i];
+
+                    glBindVertexArray(mesh.vao);
+                    glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
+                    glBindVertexArray(0);
+                }
+            }
+
+            ShaderProgram::Unbind();
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+    }
+
     void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, vector<light_t>& lights, float delta) {
+        glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
+        glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 //        glEnable(GL_CULL_FACE);
 //        glCullFace(GL_BACK);
@@ -142,17 +180,19 @@ namespace wx {
                 mesh_t& mesh = model.meshes[i];
                 material_t& mat = mesh.materials[0];
 
+                uint32_t shaderProgram = mat.program_id;
+                ShaderProgram::Bind(shaderProgram);
+
+                for (int j = 0; j < 3; ++j) {
+                    glActiveTexture(GL_TEXTURE0+i);
+                }
                 if(mat.has_albedo_texture){
-                    glActiveTexture(GL_TEXTURE0);
                     glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
                 }
                 if(mat.has_metallic_roughness_texture){
-                    glActiveTexture(GL_TEXTURE0+1);
                     glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
                 }
 
-                uint32_t shaderProgram = mat.program_id;
-                ShaderProgram::Bind(shaderProgram);
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
                 ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
@@ -170,7 +210,9 @@ namespace wx {
 
                 ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
                 ShaderProgram::SetLight(shaderProgram,"lights",lights);
+                ShaderProgram::SetMat4(shaderProgram, "LightPV", value_ptr(lights[0].pv));
 
+                glBindTexture(GL_TEXTURE_2D,lights[0].shadow_map.texture);
                 glBindVertexArray(mesh.vao);
                 glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
                 glBindVertexArray(0);
@@ -629,6 +671,35 @@ namespace wx {
         return texture;
     }
 
+    shadow_map_t Texture::LoadDepthMap(uint32_t width,uint32_t height) {
+        GLuint depthMapFBO;
+        glGenFramebuffers(1, &depthMapFBO);
+
+        GLuint depthMap;
+        glGenTextures(1, &depthMap);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+                     width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        //只关心深度缓冲
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
+        glDrawBuffer(GL_NONE);
+        glReadBuffer(GL_NONE);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        shadow_map_t shadowMap;
+        shadowMap.fbo = depthMapFBO;
+        shadowMap.texture = depthMap;
+        shadowMap.width = width;
+        shadowMap.height = height;
+        return shadowMap;
+    }
+
     /**
      * ShaderProgram
      * @param type
@@ -778,18 +849,19 @@ namespace wx {
             ShaderProgram::SetVec3(pid,name+".direction", value_ptr(light.direction));
             ShaderProgram::SetFloat(pid,name+".intensity",light.intensity);
             ShaderProgram::SetFloat(pid,name+".cutoff",light.cutoff);
+            ShaderProgram::SetInt(pid,name+".has_shadow_map",light.has_shadow_map);
             ShaderProgram::SetAttenuation(pid,name+".att",light.attenuation);
         }
     }
 
     QuadTreeNode *Terrain::CreateNewChunk(size_t depth, vec3 center, float bound, QuadTreeNode *parent) {
-        //          Logger::Info("Create QuadTreeNode ({},{},{}),{:.4f}",center.x,center.y,center.z,bound);
+//        WX_CORE_INFO("Create QuadTreeNode ({},{},{}),{:.4f}",center.x,center.y,center.z,bound);
         QuadTreeNode node;
         node.depth = depth;
         node.center = center;
         node.bound = bound;
         node.parent = parent;
-//          Logger::Info("Set Node[{}] Bound {:.4f}",node.id,bound);
+//        WX_CORE_INFO("Set Node[{}] Bound {:.4f}",node.id,bound);
         vec3 top_left = center+vec3(-bound/2,0.f,-bound/2);
         vec3 top_right = center+vec3(bound/2,0.f,-bound/2);
         vec3 bot_left = center+vec3(-bound/2,0.f,bound/2);

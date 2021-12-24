@@ -115,6 +115,14 @@ namespace wx {
     } light_type_t;
 
     typedef struct {
+        uint32_t fbo;
+        uint32_t texture;
+        uint32_t width;
+        uint32_t height;
+        uint32_t shader;
+    } shadow_map_t;
+
+    typedef struct {
         light_type_t type;
         vec3 color;
         vec3 position;
@@ -122,6 +130,9 @@ namespace wx {
         float intensity;
         float cutoff;
         attenuation_t attenuation;
+        int has_shadow_map;
+        shadow_map_t shadow_map;
+        mat4 pv;
     } light_t;
 
     class Mesh
@@ -160,6 +171,7 @@ namespace wx {
         }
 
         static uint32_t Load(const unsigned char* buffer,int len,ivec2 filter,ivec2 warp);
+        static shadow_map_t LoadDepthMap(uint32_t width,uint32_t height);
         void Bind() const;
         void Cleanup();
     };
@@ -295,6 +307,7 @@ namespace wx {
         void SetShaderMode();
         void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram);
         void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram);
+        void Render(const Window* window,vector<model_t>& models,vector<light_t>& lights,float delta);
         void Render(const Window* window,const Camera* camera,vector<model_t>& models,vector<light_t>& lights,float delta);
 
         static vector<model_t> LoadModelFromGLTF(const char* filename);
