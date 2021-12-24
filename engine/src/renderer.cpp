@@ -617,7 +617,13 @@ namespace wx {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter.y!=0?filter.y:GL_LINEAR);
         //生成纹理
         glBindTexture(GL_TEXTURE_2D,texture);
-        glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+        if(comp==4){
+            glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,data);
+        }else if(comp==3){
+            glTexImage2D(GL_TEXTURE_2D,0,GL_RGB,width,height,0,GL_RGB,GL_UNSIGNED_BYTE,data);
+        }else{
+            WX_CORE_ERROR("Image Format Unsupported");
+        }
         glGenerateMipmap(GL_TEXTURE_2D);
         stbi_image_free(data);
         return texture;

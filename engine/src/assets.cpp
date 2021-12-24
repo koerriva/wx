@@ -37,7 +37,7 @@ namespace wx {
                 stat(entry.path().string().c_str(),&file_state);
                 info[filename].mtime = file_state.st_mtime;
                 info[filename].path = entry.path().string();
-                WX_CORE_INFO("File {},{}",filename,buffer.size());
+//                WX_CORE_INFO("File {},{}",filename,buffer.size());
             }
         }
     }
