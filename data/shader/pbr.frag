@@ -1,6 +1,28 @@
 #version 330
 const float PI = 3.1415926;
 
+#define POINT_LIGHT 0
+#define SPOT_LIGHT 1
+#define DIRECTIONAL_LIGHT 2
+
+struct Attenuation
+{
+    float constant;
+    float linear;
+    float exponent;
+};
+
+struct Light
+{
+    int type;
+    vec3 color;
+    vec3 position;//世界空间坐标
+    vec3 direction;//方向
+    float intensity;
+    float cutoff;
+    Attenuation att;
+};
+
 out vec4 FragColor;
 
 in vec2 v_TexCoord;
@@ -8,8 +30,8 @@ in vec3 v_Color;
 in vec3 v_WorldPos;
 in vec3 v_Normal;
 
-vec3 light_pos = vec3(0.0,5.0,-1.0);
-vec3 light_color = vec3(10.0);
+uniform int light_num;
+uniform Light lights[20];
 
 uniform vec3 cameraPos;
 
@@ -74,7 +96,8 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 void main(){
     vec4 albedo_factor = albedo;
     if(has_albedo_texture==1){
-        albedo_factor = texture(albedo_texture,v_TexCoord);
+        vec4 c = texture(albedo_texture,v_TexCoord);
+        albedo_factor = vec4(pow(c.rgb,vec3(2.2)),c.a);
     }
 
     float metallic_factor = metallic;
@@ -89,14 +112,37 @@ void main(){
     vec3 V = normalize(cameraPos - v_WorldPos); //出射光线
 
     vec3 Lo = vec3(0.0); //出射光线的辐射率
-    for(int i=0;i<1;i++){
-        vec3 L = normalize(light_pos - v_WorldPos); //入射光方向
+    for(int i=0;i<light_num;i++){
+        Light light = lights[i];
+
+        vec3 L = normalize(light.position - v_WorldPos); //入射光方向
+        if(light.type==DIRECTIONAL_LIGHT){
+            L = normalize(light.direction);
+        }
         vec3 H = normalize(V+L);
 
-        float distance = length(light_pos - v_WorldPos);
-        float attenuation = 1.0 / (distance * distance);//衰减
-//        attenuation = 1.0;
-        vec3 radiance = light_color * attenuation;
+        vec3 radiance = light.color * light.intensity;
+
+        if(light.type==POINT_LIGHT){
+            float distance = length(light.position - v_WorldPos);
+
+            //        float attenuation = light.att.exponent / (distance * distance);//衰减
+            //        vec3 radiance = (light.color * light.intensity) * attenuation;
+
+            float attenuationInv = light.att.constant + light.att.linear * distance + light.att.exponent * (distance * distance);//衰减
+            radiance /= attenuationInv;
+        }
+        if(light.type==SPOT_LIGHT){
+            vec3 formLightDir = -L;
+            vec3 coneLightDir = normalize(light.direction);
+            float ccosTheta = dot(formLightDir,coneLightDir);
+            float attenuation = 1.0 - (1.0-ccosTheta)/(1.0-light.cutoff);
+            if(ccosTheta > light.cutoff){
+                radiance *= attenuation;
+            }else{
+                radiance *= 0.0f;
+            }
+        }
 
         vec3 F0 = vec3(0.04);//非金属材质默认0.04
         F0 = mix(F0,albedo_factor.rgb,metallic_factor);
@@ -121,5 +167,5 @@ void main(){
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//LDR to HDR
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
-    FragColor = vec4(color,albedo.a);
+    FragColor = vec4(color,1.0);
 }

@@ -116,7 +116,7 @@ namespace wx {
         glDisable(GL_DEPTH_TEST);
     }
 
-    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, float delta) {
+    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, vector<light_t>& lights, float delta) {
         glEnable(GL_DEPTH_TEST);
 //        glEnable(GL_CULL_FACE);
 //        glCullFace(GL_BACK);
@@ -142,6 +142,15 @@ namespace wx {
                 mesh_t& mesh = model.meshes[i];
                 material_t& mat = mesh.materials[0];
 
+                if(mat.has_albedo_texture){
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
+                }
+                if(mat.has_metallic_roughness_texture){
+                    glActiveTexture(GL_TEXTURE0+1);
+                    glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
+                }
+
                 uint32_t shaderProgram = mat.program_id;
                 ShaderProgram::Bind(shaderProgram);
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
@@ -153,19 +162,14 @@ namespace wx {
 
                 ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
                 ShaderProgram::SetInt(shaderProgram,"has_albedo_texture",mat.has_albedo_texture);
-                if(mat.has_albedo_texture){
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
-                }
+
                 ShaderProgram::SetFloat(shaderProgram, "metallic", mat.metallic);
                 ShaderProgram::SetFloat(shaderProgram, "roughness", mat.roughness);
                 ShaderProgram::SetFloat(shaderProgram,"ao",mat.ao);
-
                 ShaderProgram::SetInt(shaderProgram,"has_metallic_roughness_texture",mat.has_metallic_roughness_texture);
-                if(mat.has_metallic_roughness_texture){
-                    glActiveTexture(GL_TEXTURE0+1);
-                    glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
-                }
+
+                ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
+                ShaderProgram::SetLight(shaderProgram,"lights",lights);
 
                 glBindVertexArray(mesh.vao);
                 glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
@@ -235,6 +239,7 @@ namespace wx {
             }
 
             cgltf_texture_view metallicRoughnessTexture = cmat->pbr_metallic_roughness.metallic_roughness_texture;
+
             if(metallicRoughnessTexture.texture){
                 material.has_metallic_roughness_texture = 1;
                 material.metallic_roughness_texture_index = metallicRoughnessTexture.texcoord;
@@ -749,6 +754,26 @@ namespace wx {
             location = uniforms[name];
         }
         glUniform1i(location,value);
+    }
+
+    void ShaderProgram::SetAttenuation(uint32_t pid, const string& _name, attenuation_t value){
+        ShaderProgram::SetFloat(pid,_name+".constant",value.constant);
+        ShaderProgram::SetFloat(pid,_name+".exponent",value.exponent);
+        ShaderProgram::SetFloat(pid,_name+".linear",value.linear);
+    }
+
+    void ShaderProgram::SetLight(uint32_t pid, const string& _name, vector<light_t> &lights) {
+        for (int i = 0; i < lights.size(); ++i) {
+            auto& light = lights[i];
+            string name = "lights["+ to_string(i)+"]";
+            ShaderProgram::SetInt(pid,name+".type",light.type);
+            ShaderProgram::SetVec3(pid,name+".color", value_ptr(light.color));
+            ShaderProgram::SetVec3(pid,name+".position", value_ptr(light.position));
+            ShaderProgram::SetVec3(pid,name+".direction", value_ptr(light.direction));
+            ShaderProgram::SetFloat(pid,name+".intensity",light.intensity);
+            ShaderProgram::SetFloat(pid,name+".cutoff",light.cutoff);
+            ShaderProgram::SetAttenuation(pid,name+".att",light.attenuation);
+        }
     }
 
     QuadTreeNode *Terrain::CreateNewChunk(size_t depth, vec3 center, float bound, QuadTreeNode *parent) {

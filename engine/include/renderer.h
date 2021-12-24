@@ -104,6 +104,26 @@ namespace wx {
         transform_t  transform;
     } model_t;
 
+    typedef struct {
+        float constant;
+        float linear;
+        float exponent;
+    } attenuation_t;
+
+    typedef enum {
+        point=0,spot,directional,ambient
+    } light_type_t;
+
+    typedef struct {
+        light_type_t type;
+        vec3 color;
+        vec3 position;
+        vec3 direction;
+        float intensity;
+        float cutoff;
+        attenuation_t attenuation;
+    } light_t;
+
     class Mesh
     {
     private:
@@ -173,6 +193,9 @@ namespace wx {
         static void SetVec4(uint32_t pid,const string& name,float* value);
         static void SetVec3(uint32_t pid,const string& name,float* value);
         static void SetInt(uint32_t pid, const string& name, int value);
+
+        static void SetAttenuation(uint32_t pid, const string& _name, attenuation_t value);
+        static void SetLight(uint32_t pid, const string& _name, vector <light_t> &lights);
     };
 
     struct Patch{
@@ -272,7 +295,7 @@ namespace wx {
         void SetShaderMode();
         void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram);
         void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram);
-        void Render(const Window* window,const Camera* camera,vector<model_t>& models,float delta);
+        void Render(const Window* window,const Camera* camera,vector<model_t>& models,vector<light_t>& lights,float delta);
 
         static vector<model_t> LoadModelFromGLTF(const char* filename);
     };
