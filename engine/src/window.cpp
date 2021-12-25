@@ -33,7 +33,7 @@ namespace wx {
             glfwWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
             if(!glfwWindow){
                 glfwTerminate();
-                std::cerr << "Create GLFW Window Fail!"<<std::endl;
+                WX_CORE_CRITICAL("Create GLFW Window Fail!");
                 exit(-1);
             }
 
@@ -49,7 +49,7 @@ namespace wx {
             glfwMakeContextCurrent(glfwWindow);
 
             if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
-                std::cerr << "Load OpenGL Fail!" << std::endl;
+                WX_CORE_CRITICAL("Load OpenGL Fail!");
                 exit(-1);
             }
 
