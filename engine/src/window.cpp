@@ -86,6 +86,12 @@ namespace wx {
 
         glfwSwapBuffers(glfwWindow);
         glfwPollEvents();
+
+        for (int i = 0; i < GLFW_KEY_LAST + 1; ++i) {
+            int key_state = glfwGetKey(glfwWindow,i);
+            last_key_state[i] = curr_key_state[i];
+            curr_key_state[i] = key_state;
+        }
     }
 
     void Window::Cleanup(){
@@ -93,6 +99,10 @@ namespace wx {
     }
 
     bool Window::GetKeyPressed(int key) const{
-        return glfwGetKey(glfwWindow,key)==GLFW_PRESS;
+        return last_key_state[key]==GLFW_PRESS&&curr_key_state[key]==GLFW_RELEASE;
+    }
+
+    bool Window::GetKeyDown(int key) const {
+        return curr_key_state[key]==GLFW_PRESS;
     }
 }

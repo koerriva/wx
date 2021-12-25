@@ -17,24 +17,27 @@ namespace wx {
     void GLTFViewer::Init(Window *window) {
         WX_INFO("GLFTViewer Init");
         renderer->Init();
-        auto Scene_sets = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
-        auto CesiumDrone_sets = Renderer::LoadModelFromGLTF("model\\CesiumDrone.glb");
-        auto Snake = Renderer::LoadModelFromGLTF("model\\Snake.gltf");
-        auto Sphere = Renderer::LoadModelFromGLTF("model\\Sphere.gltf");
-        for (auto& m:Scene_sets) {
+//        auto Plane = Renderer::LoadModelFromGLTF("model\\Plane.glb")[0];
+//        Plane.transform.scale += vec3(100);
+//        this->models.push_back(Plane);
+
+        auto Scene = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
+        for (auto& m:Scene) {
             this->models.push_back(m);
         }
-        for (auto& m:CesiumDrone_sets) {
-            m.transform.position += vec3(4,5,1);
-            this->models.push_back(m);
+
+        auto FlySets = Renderer::LoadModelFromGLTF("model\\CesiumDrone.glb");
+        for (auto& f:FlySets) {
+            f.transform.position += vec3(5);
+            this->models.push_back(f);
         }
-        for (auto& m : Snake) {
-            this->models.push_back(m);
-        }
-        for (auto& m : Sphere) {
-            m.transform.position += vec3(-2,3,5);
-            this->models.push_back(m);
-        }
+
+        auto Sphere = Renderer::LoadModelFromGLTF("model\\Sphere.gltf")[0];
+        Sphere.transform.position += vec3(-5,5,0);
+        this->models.push_back(Sphere);
+        model_t pointLightModel = Sphere;
+        pointLightModel.transform.position = vec3(0,10,0);
+        this->models.push_back(pointLightModel);
 
         camera = new Camera({0.0,2.0,10.0});
 
@@ -45,33 +48,42 @@ namespace wx {
 //        window->SetCursor(img, w, h, 9, 3);
         window->SetCursor(img, w, h, 7, 1);
 
-//        light_t pointLight;
-//        pointLight.type = point;
-//        pointLight.color = vec3{1.0f};
-//        pointLight.position = vec3{0,5,-1};
-//        pointLight.intensity = 10;
-//        pointLight.attenuation = {0.0,0.02,1.1};
-//        lights.push_back(pointLight);
-
         uint32_t depth_shader = ShaderProgram::LoadShader("depth");
-
         light_t dirLight;
         dirLight.type = directional;
         dirLight.color = vec3{1.0f};
-        dirLight.direction = vec3{0,-1,0};
-        dirLight.intensity = 10;
-        dirLight.shadow_map = Texture::LoadDepthMap(1024,1024);
+        dirLight.direction = vec3{0,-1,1};
+        dirLight.intensity = 5;
+        dirLight.shadow_map = Texture::LoadDepthMap(4096,4096);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
 
         glm::mat4 P(1.0f),V(1.0f);
-        float near_plane = 1.0f, far_plane = 7.5f;
+        float near_plane = -1.f, far_plane = 20.f;
         P = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
-        vec3 lightPos = vec3{0,2,0};
-        V = glm::lookAt(lightPos, lightPos+dirLight.direction, glm::vec3(0.0f, 1.0f, 0.0f));
+        vec3 lightPos = vec3{-5,5,0};
+        V = glm::lookAt(lightPos, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
+        dirLight.p = P;
+        dirLight.v = V;
+//        lights.push_back(dirLight);
 
-        dirLight.pv = P*V;
-        lights.push_back(dirLight);
+        light_t pointLight;
+        pointLight.type = point;
+        pointLight.color = vec3{1.0f,0.2,0.2};
+        pointLight.position = vec3{0,10,0};
+        pointLight.intensity = 100;
+        pointLight.attenuation = {0.0,0.0,0.12};
+        pointLight.shadow_map = Texture::LoadDepthMap(4096,4096);
+        pointLight.shadow_map.shader = depth_shader;
+        pointLight.has_shadow_map = 1;
+        pointLight.p = glm::perspective(radians(60.0f),1.0f,0.1f,100.f);
+        lights.push_back(pointLight);
+
+        canvas.shader = ShaderProgram::LoadShader("hud");
+        canvas.vao = Mesh::UnitQuad();
+        canvas.texture = pointLight.shadow_map.texture;
+        canvas.position = vec2{0};
+        canvas.size = vec2{200,200};
 
 //        light_t spotLight;
 //        spotLight.type = spot;
@@ -93,27 +105,24 @@ namespace wx {
         if(window->GetKeyPressed(F2)){
             renderer->SetWireframeMode();
         }
+        if(window->GetKeyPressed(F3)){
+            int has = lights[0].has_shadow_map;
+            lights[0].has_shadow_map = has==0?1:0;
+        }
 
         cameraState.x = 0.f;
         cameraState.y = 0.f;
-        if(window->GetKeyPressed(KeyCode::W)){
+        if(window->GetKeyDown(KeyCode::W)){
             cameraState.x = 1.f;
         }
-        if(window->GetKeyPressed(KeyCode::S)){
+        if(window->GetKeyDown(KeyCode::S)){
             cameraState.x = -1.f;
         }
-        if(window->GetKeyPressed(KeyCode::D)){
+        if(window->GetKeyDown(KeyCode::D)){
             cameraState.y = 1.f;
         }
-        if(window->GetKeyPressed(KeyCode::A)){
+        if(window->GetKeyDown(KeyCode::A)){
             cameraState.y = -1.f;
-        }
-
-        if(window->GetKeyPressed(F1)){
-            renderer->SetShaderMode();
-        }
-        if(window->GetKeyPressed(F2)){
-            renderer->SetWireframeMode();
         }
 
         cameraDirection.x = 0;
@@ -139,7 +148,7 @@ namespace wx {
 
     void GLTFViewer::Render(Window *window, float elapsedTime) {
         renderer->Render(window,models,lights,elapsedTime);
-        renderer->Render(window,camera,this->models,this->lights, elapsedTime);
+        renderer->Render(window,camera,this->models,this->lights,this->canvas, elapsedTime);
     }
 
     void GLTFViewer::Cleanup() {

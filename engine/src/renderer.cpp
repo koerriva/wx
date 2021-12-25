@@ -116,17 +116,23 @@ namespace wx {
         glDisable(GL_DEPTH_TEST);
     }
 
-    void Renderer::Render(const Window *window, vector<model_t>& models, vector<light_t>& lights, float delta) {
+    void Renderer::Render(const Window *window, vector<model_t>& models, vector<light_t>& lights,float delta) {
         for (auto & light:lights) {
+            if(!light.has_shadow_map){
+                continue;
+            }
             glViewport(0, 0, light.shadow_map.width, light.shadow_map.height);
             glBindFramebuffer(GL_FRAMEBUFFER, light.shadow_map.fbo);
             glClear(GL_DEPTH_BUFFER_BIT);
-
-            float aspect = window->GetAspect();
+            glEnable(GL_DEPTH_TEST);
 
             uint32_t shaderProgram = light.shadow_map.shader;
             ShaderProgram::Bind(shaderProgram);
-            ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(light.pv));
+
+            if(light.type==directional){
+                mat4 pv = light.p * light.v;
+                ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
+            }
 
             for (auto& model:models) {
                 mat4 M = translate(mat4{1},model.transform.position)
@@ -135,6 +141,11 @@ namespace wx {
                     * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
                     * scale(mat4{1},model.transform.scale);
 
+                if(light.type==point){
+                    light.v = glm::lookAt(light.position,model.transform.position,vec3(0.0f,1.0f,0.0f));
+                    mat4 pv = light.p * light.v;
+                    ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
+                }
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
 
                 for (int i = 0; i < model.mesh_count; ++i) {
@@ -147,12 +158,11 @@ namespace wx {
             }
 
             ShaderProgram::Unbind();
-
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
     }
 
-    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, vector<light_t>& lights, float delta) {
+    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, vector<light_t>& lights,canvas_t canvas, float delta) {
         glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
@@ -176,22 +186,43 @@ namespace wx {
                     * rotate(mat4{1},model.transform.rotation.y,vec3{0.,1.,0.})
                     * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
                     * scale(mat4{1},model.transform.scale);
+
+            uint32_t shaderProgram = model.material.program_id;
+            ShaderProgram::Bind(shaderProgram);
+            ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
+            ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
+            for (int i = 0; i < lights.size(); ++i) {
+                if(lights[i].has_shadow_map){
+                    ShaderProgram::SetInt(shaderProgram,"shadowMap",2+i);
+                    glBindTextureUnit(2+i,lights[i].shadow_map.texture);
+
+                    if(lights[i].type==point){
+                        lights[i].v = glm::lookAt(lights[i].position,model.transform.position,vec3(0.0f,1.0f,0.0f));
+                        mat4 pv = lights[i].p * lights[i].v;
+                        ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
+                    }
+
+                    if(lights[i].type==directional){
+                        mat4 pv = lights[i].p * lights[i].v;
+                        ShaderProgram::SetMat4(shaderProgram, "LightPV["+ to_string(i)+"]", value_ptr(pv));
+                    }
+                }
+            }
+
             for (int i = 0; i < model.mesh_count; ++i) {
                 mesh_t& mesh = model.meshes[i];
-                material_t& mat = mesh.materials[0];
+                material_instance_t& mat = mesh.materials[0];
+//
+//                glActiveTexture(GL_TEXTURE0);
+//                glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
+//                glActiveTexture(GL_TEXTURE0+1);
+//                glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
+//                glActiveTexture(GL_TEXTURE0+2);
+//                glBindTexture(GL_TEXTURE_2D,lights[0].shadow_map.texture);
 
-                uint32_t shaderProgram = mat.program_id;
-                ShaderProgram::Bind(shaderProgram);
+                glBindTextureUnit(0,mat.albedo_texture);
+                glBindTextureUnit(1,mat.metallic_roughness_texture);
 
-                for (int j = 0; j < 3; ++j) {
-                    glActiveTexture(GL_TEXTURE0+i);
-                }
-                if(mat.has_albedo_texture){
-                    glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
-                }
-                if(mat.has_metallic_roughness_texture){
-                    glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
-                }
 
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
                 ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
@@ -210,18 +241,37 @@ namespace wx {
 
                 ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
                 ShaderProgram::SetLight(shaderProgram,"lights",lights);
-                ShaderProgram::SetMat4(shaderProgram, "LightPV", value_ptr(lights[0].pv));
 
-                glBindTexture(GL_TEXTURE_2D,lights[0].shadow_map.texture);
                 glBindVertexArray(mesh.vao);
                 glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
                 glBindVertexArray(0);
 
                 ShaderProgram::Unbind();
             }
+
+            ShaderProgram::Unbind();
         }
 
-        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        ShaderProgram::Bind(canvas.shader);
+        mat4 uP = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
+        vec3 color = {1.0,1.0,0.2};
+        mat4 uM{1.0f};
+        uM = translate(uM,vec3(canvas.position,0.0f));
+        uM = scale(uM,vec3(canvas.size,0.0f));
+        ShaderProgram::SetVec3(canvas.shader,"color", value_ptr(color));
+        ShaderProgram::SetMat4(canvas.shader,"P", value_ptr(uP));
+        ShaderProgram::SetMat4(canvas.shader,"M", value_ptr(uM));
+        ShaderProgram::SetInt(canvas.shader,"texture0",0);
+//        glActiveTexture(GL_TEXTURE0);
+        glBindTextureUnit(0,canvas.texture);
+        glBindVertexArray(canvas.vao);
+        glDrawArrays(GL_TRIANGLES,0,6);
+        glBindVertexArray(0);
+        ShaderProgram::Unbind();
 
         this->frame_time += delta;
         this->frame_count++;
@@ -253,12 +303,14 @@ namespace wx {
 
         WX_CORE_INFO("Upload Shader ..." );
 
-        unordered_map<const char*,material_t> materials;
+        unordered_map<const char*,material_instance_t> materials;
 
-        uint32_t shader = ShaderProgram::LoadShader("pbr");
+        uint32_t pbrShader = ShaderProgram::LoadShader("pbr");
+        material_t pbrMaterial{pbrShader};
         for (int i = 0; i < data->materials_count; ++i) {
             cgltf_material* cmat =  &data->materials[i];
-            material_t material{};
+            material_instance_t material{};
+            material.parent = pbrMaterial;
             WX_CORE_TRACE("Upload Material {}",cmat->name);
             cgltf_texture_view baseColorTexture = cmat->pbr_metallic_roughness.base_color_texture;
             if(baseColorTexture.texture){
@@ -301,8 +353,6 @@ namespace wx {
                 material.roughness = cmat->pbr_metallic_roughness.roughness_factor;
             }
 
-            material.program_id = shader;
-
             materials[cmat->name] = material;
         }
 
@@ -316,6 +366,7 @@ namespace wx {
             }
 
             model_t model;
+            model.material = pbrMaterial;
 
             if(cnode.has_translation){
                 model.transform.position = {cnode.translation[0],cnode.translation[1],cnode.translation[2]};
@@ -441,7 +492,6 @@ namespace wx {
                     mesh.materials[mesh.material_count].albedo = {1.f, 0.3f, 0.3f, 1.0f};
                     mesh.materials[mesh.material_count].metallic = 0.f;
                     mesh.materials[mesh.material_count].roughness = 1.0f;
-                    mesh.materials[mesh.material_count].program_id = shader;
                     mesh.material_count++;
                 }
 
@@ -591,6 +641,32 @@ namespace wx {
         return Mesh(vertices,indices,normals,texCoords,colors);
     }
 
+    uint32_t Mesh::UnitQuad() {
+        uint32_t vao,vbo;
+        glGenVertexArrays(1,&vao);
+        glBindVertexArray(vao);
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+
+        float data[24] = {
+                -1.f,  1.f, 0.0f,0.0f,//
+                -1.f, -1.f, 0.0f,1.0f,
+                1.f,  1.f, 1.0f,0.0f,
+                1.f,  1.f, 1.0f,0.0f,
+                -1.f, -1.f, 0.0f,1.0f,
+                1.f, -1.f, 1.0f,1.0f,
+        };
+
+        glBufferData(GL_ARRAY_BUFFER, 24 * sizeof(GLfloat), data, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0,4,GL_FLOAT,GL_FALSE,4*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(0);
+        return vao;
+    }
+
     void Mesh::DumpPNGFile(int width, int height, vector<float> &colors) {
         int pos=0,comps=3;
         vector<unsigned char> buffer;
@@ -682,8 +758,10 @@ namespace wx {
                      width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        GLfloat borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
 
         //只关心深度缓冲
         glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
@@ -817,6 +895,19 @@ namespace wx {
             location = uniforms[name];
         }
         glUniform3fv(location,1,value);
+    }
+    void ShaderProgram::SetVec2(uint32_t pid,const string& _name, float *value){
+        int location = 0;
+        string name = to_string(pid) + "_" + _name;
+        if(uniforms.count(name)==0){
+            cout << "Find Uniform : " << name << endl;
+            location = glGetUniformLocation(pid,_name.c_str());
+            cout << "Uniform[" << name << "] Location=" << location << endl;
+            uniforms[name]=location;
+        }else{
+            location = uniforms[name];
+        }
+        glUniform2fv(location,1,value);
     }
 
     void ShaderProgram::SetInt(uint32_t pid, const string& _name, int value) {

@@ -77,6 +77,10 @@ namespace wx {
 
     typedef struct{
         uint32_t program_id;
+    } material_t;
+
+    typedef struct{
+        material_t parent;
         vec4 albedo{1.f};
         int has_albedo_texture = 0;
         uint32_t albedo_texture;
@@ -87,21 +91,22 @@ namespace wx {
         int has_metallic_roughness_texture = 0;
         uint32_t metallic_roughness_texture;
         int metallic_roughness_texture_index;
-    } material_t;
+    } material_instance_t;
 
     typedef struct{
         uint32_t vao;
         int vertices_count = 0;
         int indices_count = 0;
         uint32_t indices_type;
-        material_t materials[64];
+        material_instance_t materials[10];
         uint32_t material_count = 0;
     } mesh_t;
 
     typedef struct {
-        mesh_t meshes[64];
+        mesh_t meshes[10];
         uint32_t mesh_count = 0;
         transform_t  transform;
+        material_t material;
     } model_t;
 
     typedef struct {
@@ -132,8 +137,17 @@ namespace wx {
         attenuation_t attenuation;
         int has_shadow_map;
         shadow_map_t shadow_map;
-        mat4 pv;
+        mat4 p{1.f};
+        mat4 v{1.f};
     } light_t;
+
+    typedef struct {
+        uint32_t shader;
+        uint32_t vao;
+        uint32_t texture;
+        vec2 position;
+        vec2 size;
+    } canvas_t;
 
     class Mesh
     {
@@ -156,6 +170,7 @@ namespace wx {
         void Cleanup() const;
 
         static Mesh Sphere(float r,int sectors,int stacks);
+        static uint32_t UnitQuad();
         static void DumpPNGFile(int width,int height,vector<float>& colors);
     };
 
@@ -204,6 +219,7 @@ namespace wx {
         static void SetMat4(uint32_t pid,const string& name,float* value);
         static void SetVec4(uint32_t pid,const string& name,float* value);
         static void SetVec3(uint32_t pid,const string& name,float* value);
+        static void SetVec2(uint32_t pid,const string& name,float* value);
         static void SetInt(uint32_t pid, const string& name, int value);
 
         static void SetAttenuation(uint32_t pid, const string& _name, attenuation_t value);
@@ -308,7 +324,7 @@ namespace wx {
         void Render(const Window* window,const Camera* camera,const vector<Mesh>& meshList,const vector<Texture>& textures,ShaderProgram shaderProgram);
         void Render(const Window* window,const Camera* camera,Terrain* terrain,ShaderProgram shaderProgram);
         void Render(const Window* window,vector<model_t>& models,vector<light_t>& lights,float delta);
-        void Render(const Window* window,const Camera* camera,vector<model_t>& models,vector<light_t>& lights,float delta);
+        void Render(const Window* window,const Camera* camera,vector<model_t>& models,vector<light_t>& lights,canvas_t canvas,float delta);
 
         static vector<model_t> LoadModelFromGLTF(const char* filename);
     };

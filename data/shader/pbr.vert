@@ -9,6 +9,7 @@ uniform float time;
 uniform mat4 P;
 uniform mat4 V;
 uniform mat4 M;
+uniform int light_num;
 uniform mat4 LightPV[20];
 
 out vec2 v_TexCoord;
@@ -22,5 +23,7 @@ void main(){
     v_Normal = mat3(transpose(inverse(M))) * normal;
     v_WorldPos = (M*vec4(position,1.0)).xyz;
 
-    v_LightWorldPos[0] = LightPV[0]*M*vec4(position,1.0);
+    for(int i=0;i<light_num;i++){
+        v_LightWorldPos[i] = LightPV[i]*M*vec4(position,1.0);
+    }
 }

@@ -43,6 +43,9 @@ namespace wx {
 
         double mLastX = width/2,mLastY = height/2,mXOffset,mYOffset;
 
+        int last_key_state[GLFW_KEY_LAST+1] = {0};
+        int curr_key_state[GLFW_KEY_LAST+1] = {0};
+
     public:
         Window(string title,int width,int height,bool vsync);
         ~Window();
@@ -78,6 +81,7 @@ namespace wx {
 
         //Input
         [[nodiscard]] bool GetKeyPressed(int key) const;
+        bool GetKeyDown(int key) const;
 
         [[nodiscard]] int GetWidth() const {
             return width;
