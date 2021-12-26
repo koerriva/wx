@@ -16,3 +16,7 @@ env:`Mingw64`
     mkdir build & cd build
     cmake .. -v -j8
 ```
+
+## Version
+- 0.2.2 (平行光阴影,点光源阴影)
+- 0.2.0 (模型加载,基本的渲染)
