@@ -17,26 +17,26 @@ namespace wx {
     void GLTFViewer::Init(Window *window) {
         WX_INFO("GLFTViewer Init");
         renderer->Init();
-//        auto Plane = Renderer::LoadModelFromGLTF("model\\Plane.glb")[0];
+//        auto Plane = Mesh::LoadModelFromGLTF("model\\Plane.glb")[0];
 //        Plane.transform.scale += vec3(100);
 //        this->models.push_back(Plane);
 
-        auto Scene = Renderer::LoadModelFromGLTF("model\\Scene.gltf");
+        auto Scene = Mesh::LoadModelFromGLTF("model\\Scene.gltf");
         for (auto& m:Scene) {
             this->models.push_back(m);
         }
 
-        auto FlySets = Renderer::LoadModelFromGLTF("model\\CesiumDrone.glb");
+        auto FlySets = Mesh::LoadModelFromGLTF("model\\CesiumDrone.glb");
         for (auto& f:FlySets) {
-            f.transform.position += vec3(5);
+            f.transform.position += vec3(4);
             this->models.push_back(f);
         }
 
-        auto Sphere = Renderer::LoadModelFromGLTF("model\\Sphere.gltf")[0];
+        auto Sphere = Mesh::LoadModelFromGLTF("model\\Sphere.gltf")[0];
         Sphere.transform.position += vec3(-5,5,0);
         this->models.push_back(Sphere);
         model_t pointLightModel = Sphere;
-        pointLightModel.transform.position = vec3(0,10,0);
+        pointLightModel.transform.position = vec3(0,6,0);
         this->models.push_back(pointLightModel);
 
         camera = new Camera({0.0,2.0,10.0});
@@ -49,39 +49,46 @@ namespace wx {
         window->SetCursor(img, w, h, 7, 1);
 
         uint32_t depth_shader = ShaderProgram::LoadShader("depth");
+        uint32_t depth_cube_shader = ShaderProgram::LoadShader("depth_cube",true);
+
         light_t dirLight;
         dirLight.type = directional;
         dirLight.color = vec3{1.0f};
         dirLight.direction = vec3{0,-1,1};
-        dirLight.intensity = 5;
+        dirLight.intensity = 100;
         dirLight.shadow_map = Texture::LoadDepthMap(4096,4096);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
 
         glm::mat4 P(1.0f),V(1.0f);
         float near_plane = -1.f, far_plane = 20.f;
-        P = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, near_plane, far_plane);
+        P = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
         vec3 lightPos = vec3{-5,5,0};
         V = glm::lookAt(lightPos, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
         dirLight.p = P;
         dirLight.v = V;
-//        lights.push_back(dirLight);
+        dirLight.far_plane = 20;
+        lights.push_back(dirLight);
 
         light_t pointLight;
         pointLight.type = point;
-        pointLight.color = vec3{1.0f,0.2,0.2};
-        pointLight.position = vec3{0,10,0};
-        pointLight.intensity = 100;
+        pointLight.color = vec3{1.0f,1.0,1.0};
+        pointLight.position = vec3{0.f,6.0,0.0};
+        pointLight.intensity = 50;
         pointLight.attenuation = {0.0,0.0,0.12};
-        pointLight.shadow_map = Texture::LoadDepthMap(4096,4096);
-        pointLight.shadow_map.shader = depth_shader;
+        pointLight.shadow_map = Texture::LoadDepthCubeMap(4096,4096);
+        pointLight.shadow_map.shader = depth_cube_shader;
         pointLight.has_shadow_map = 1;
-        pointLight.p = glm::perspective(radians(60.0f),1.0f,0.1f,100.f);
+        pointLight.far_plane = 100.f;
+        pointLight.p = glm::perspective(radians(90.f),1.0f,1.f,pointLight.far_plane);
         lights.push_back(pointLight);
 
         canvas.shader = ShaderProgram::LoadShader("hud");
         canvas.vao = Mesh::UnitQuad();
         canvas.texture = pointLight.shadow_map.texture;
+        ShaderProgram::Bind(canvas.shader);
+        ShaderProgram::SetInt(canvas.shader,"type",point);
+        ShaderProgram::Unbind();
         canvas.position = vec2{0};
         canvas.size = vec2{200,200};
 

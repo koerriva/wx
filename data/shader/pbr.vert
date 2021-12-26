@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
@@ -9,13 +9,12 @@ uniform float time;
 uniform mat4 P;
 uniform mat4 V;
 uniform mat4 M;
-uniform int light_num;
-uniform mat4 LightPV[20];
+uniform mat4 LightPV[5];
 
 out vec2 v_TexCoord;
 out vec3 v_WorldPos;
 out vec3 v_Normal;
-out vec4 v_LightWorldPos[20];
+out vec4 v_LightWorldPos[5];
 
 void main(){
     gl_Position = P*V*M*vec4(position,1.0);
@@ -23,7 +22,7 @@ void main(){
     v_Normal = mat3(transpose(inverse(M))) * normal;
     v_WorldPos = (M*vec4(position,1.0)).xyz;
 
-    for(int i=0;i<light_num;i++){
+    for(int i=0;i<5;i++){
         v_LightWorldPos[i] = LightPV[i]*M*vec4(position,1.0);
     }
 }

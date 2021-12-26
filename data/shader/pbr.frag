@@ -1,4 +1,4 @@
-#version 330
+#version 430 core
 const float PI = 3.1415926;
 
 #define POINT_LIGHT 0
@@ -21,6 +21,8 @@ struct Light
     float intensity;
     float cutoff;
     int has_shadow_map;
+    float far_plane;
+    int shadow_map_index;
     Attenuation att;
 };
 
@@ -30,7 +32,7 @@ in vec2 v_TexCoord;
 in vec3 v_Color;
 in vec3 v_WorldPos;
 in vec3 v_Normal;
-in vec4 v_LightWorldPos[20];
+in vec4 v_LightWorldPos[5];
 
 uniform int light_num;
 uniform Light lights[20];
@@ -47,13 +49,13 @@ uniform float metallic;
 uniform float roughness;
 uniform int has_metallic_roughness_texture;
 uniform sampler2D metallic_roughness_texture;
-
 //环境光遮蔽 - 可以换成贴图需要从sRGB 转换到 linerRGB
 uniform float ao;
 
-//uniform sampler2D texture0;
-
-uniform sampler2D shadowMap[20];
+//平行光阴影贴图
+uniform sampler2D shadowMap[5];
+//点光源阴影贴图
+uniform samplerCube shadowCubeMap[5];
 
 //菲涅尔函数-计算镜面反射和漫反射系数
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
@@ -97,7 +99,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float ShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
+float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 {
     // 执行透视除法
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -125,6 +127,44 @@ float ShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
     }
 
     shadow /= 9.0;
+
+    float depth = texture(shadowMap, projCoords.xy).r;
+    shadow = currentDepth - bias > depth ? 1.0:0.0;
+    return shadow;
+}
+
+vec3 sampleOffsetDirections[20] = vec3[]
+(
+vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
+vec3( 1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1,  1, -1),
+vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
+vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
+vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
+);
+float PointShadowCalculation(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,float nfar,float bias_n)
+{
+    vec3 fragToLight = fragPos - lightPos;
+    float currentDepth = length(fragToLight);
+    float shadow = 0.0;
+    float depth = texture(shadowMap, fragToLight).r;
+    depth *= nfar;
+    shadow = currentDepth - bias_n > depth ? 1.0:0.0;
+
+    shadow = 0.0;
+    float bias = 0.15;
+    int samples = 20;
+    float viewDistance = length(cameraPos - fragPos);
+//    float diskRadius = 0.05;
+    float diskRadius = (1.0 + (viewDistance / nfar)) / 25.0;
+    for(int i = 0; i < samples; ++i)
+    {
+        float closestDepth = texture(shadowMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
+        closestDepth *= nfar;   // Undo mapping [0;1]
+        if(currentDepth - bias > closestDepth)
+        shadow += 1.0;
+    }
+    shadow /= float(samples);
+
     return shadow;
 }
 
@@ -147,6 +187,7 @@ void main(){
     vec3 V = normalize(cameraPos - v_WorldPos); //出射光线
 
     vec3 Lo = vec3(0.0); //出射光线的辐射率
+
     for(int i=0;i<light_num;i++){
         Light light = lights[i];
 
@@ -198,9 +239,16 @@ void main(){
         Lo += (kD*albedo_factor.rgb/PI + specular) * radiance * NdotL;
 
         if(light.has_shadow_map==1){
-            float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
-            float shadow = ShadowCalculation(shadowMap[i],v_LightWorldPos[i],bias);
-            Lo *= 1.0 - shadow;
+            if(light.type==DIRECTIONAL_LIGHT){
+                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
+                float shadow = DirectionalShadowCalculation(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
+                Lo *= 1.0 - shadow;
+            }
+            if(light.type==POINT_LIGHT){
+                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
+                float shadow = PointShadowCalculation(shadowCubeMap[light.shadow_map_index],v_WorldPos,light.position,light.far_plane,bias);
+                Lo *= 1.0 - shadow;
+            }
         }
     }
     // 计算阴影
@@ -211,4 +259,7 @@ void main(){
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
 
     FragColor = vec4(color,1.0);
+
+//    float closestDepth = texture(shadowCubeMap[0], (v_WorldPos-lights[0].position)).r;
+//    FragColor = vec4(vec3(closestDepth / lights[0].far_plane), 1.0);
 }
