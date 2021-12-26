@@ -65,15 +65,13 @@ namespace wx {
             WX_CORE_INFO("FrameBuffer Size Size ({},{})",w,h);
             glfwGetWindowContentScale(glfwWindow,&widthScale,&heightScale);
             WX_CORE_INFO("Window Scale ({},{})",widthScale,heightScale);
-
-            glViewport(0,0,width*int(widthScale),height*int(heightScale));
         }
 
     }
 
     void Window::Update(){
         closed = glfwWindowShouldClose(glfwWindow)==1;
-        glfwGetWindowSize(glfwWindow,&width,&height);
+//        glfwGetWindowSize(glfwWindow,&width,&height);
         double mX,mY;
         glfwGetCursorPos(glfwWindow,&mX,&mY);
         mXOffset = mX - mLastX;
