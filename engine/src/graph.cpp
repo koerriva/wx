@@ -877,14 +877,15 @@ namespace wx {
         glEnable(GL_CULL_FACE);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+//        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         ShaderProgram::Bind(shaderProgram);
         ShaderProgram::SetVec3(shaderProgram,"color", value_ptr(color));
         mat4 P = ortho(0.f,1280.f,720.f,0.f);
         ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
-        glActiveTexture(GL_TEXTURE0);
+        ShaderProgram::SetInt(shaderProgram,"color_texture",0);
         glBindVertexArray(VAO);
+        glActiveTexture(GL_TEXTURE0);
 
         wstring chars = text;
         for (auto it=chars.begin();it!=chars.end();++it) {

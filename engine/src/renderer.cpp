@@ -120,6 +120,9 @@ namespace wx {
 
             ShaderProgram::Unbind();
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+            glDisable(GL_DEPTH_TEST);
+            glDisable(GL_CULL_FACE);
         }
     }
 
@@ -127,8 +130,6 @@ namespace wx {
         glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-//        glEnable(GL_CULL_FACE);
-//        glCullFace(GL_BACK);
         if(WIREFRAME_MODE){
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
@@ -227,12 +228,12 @@ namespace wx {
             ShaderProgram::Unbind();
         }
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//        glEnable(GL_BLEND);
+//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         ShaderProgram::Bind(canvas.shader);
         mat4 uP = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
-        vec3 color = {1.0,1.0,0.2};
+        vec3 color = {1.0,1.0,1.0};
         mat4 uM{1.0f};
         uM = translate(uM,vec3(canvas.position,0.0f));
         uM = scale(uM,vec3(canvas.size,0.0f));
@@ -246,6 +247,7 @@ namespace wx {
         glDrawArrays(GL_TRIANGLES,0,6);
         glBindVertexArray(0);
         ShaderProgram::Unbind();
+
         this->frame_time += delta;
         this->frame_count++;
     }
