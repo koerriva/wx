@@ -38,6 +38,9 @@ namespace wx {
         model_t pointLightModel = Sphere;
         pointLightModel.transform.position = vec3(0,6,0);
         this->models.push_back(pointLightModel);
+        model_t spotLightModel = Sphere;
+        spotLightModel.transform.position = vec3(0,10,0);
+        this->models.push_back(spotLightModel);
 
         camera = new Camera({0.0,2.0,10.0});
 
@@ -59,16 +62,12 @@ namespace wx {
         dirLight.shadow_map = Texture::LoadDepthMap(2048,2048);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
+        dirLight.near_plane = -1.0f;
+        dirLight.far_plane = 20.f;
 
-        glm::mat4 P(1.0f),V(1.0f);
-        float near_plane = -1.f, far_plane = 20.f;
-        P = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, near_plane, far_plane);
-        vec3 lightPos = vec3{-5,5,0};
-        V = glm::lookAt(lightPos, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
-        dirLight.p = P;
-        dirLight.v = V;
-        dirLight.far_plane = far_plane;
-        lights.push_back(dirLight);
+        dirLight.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, dirLight.near_plane, dirLight.far_plane);;
+        dirLight.v = glm::lookAt(vec3{-5,5,0}, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
+//        lights.push_back(dirLight);
 
         light_t pointLight;
         pointLight.type = point;
@@ -79,27 +78,37 @@ namespace wx {
         pointLight.shadow_map = Texture::LoadDepthCubeMap(2048,2048);
         pointLight.shadow_map.shader = depth_cube_shader;
         pointLight.has_shadow_map = 1;
+        pointLight.near_plane = 1.f;
         pointLight.far_plane = 50.f;
-        pointLight.p = glm::perspective(radians(90.f),1.0f,1.f,pointLight.far_plane);
-        lights.push_back(pointLight);
+        pointLight.p = glm::perspective(radians(90.f),1.0f,pointLight.near_plane,pointLight.far_plane);
+//        lights.push_back(pointLight);
+
+        light_t spotLight;
+        spotLight.type = spot;
+        spotLight.color = vec3{1.0f,1.0,1.0};
+        spotLight.position = vec3{0.f,10.,0.};
+        spotLight.direction = vec3{0.f,-1.f,0.};
+        spotLight.cutoff = glm::cos(radians(45.0f));
+        spotLight.intensity = 10;
+        spotLight.shadow_map = Texture::LoadDepthMap(2048,2048);
+        spotLight.shadow_map.shader = depth_shader;
+        spotLight.has_shadow_map = 1;
+        spotLight.near_plane = 1.f;
+        spotLight.far_plane = 25.f;
+        spotLight.p = glm::perspective(radians(45.f),1.0f,spotLight.near_plane,spotLight.far_plane);
+        spotLight.v = glm::lookAt(spotLight.position,spotLight.position+spotLight.direction,vec3(0.0f,1.0f,0.0f));
+        lights.push_back(spotLight);
 
         canvas.shader = ShaderProgram::LoadShader("hud");
         canvas.vao = Mesh::UnitQuad();
-        canvas.texture = pointLight.shadow_map.texture;
+        canvas.texture = spotLight.shadow_map.texture;
         ShaderProgram::Bind(canvas.shader);
-        ShaderProgram::SetInt(canvas.shader,"type",point);
+        ShaderProgram::SetInt(canvas.shader,"type",spotLight.type);
+        ShaderProgram::SetFloat(canvas.shader,"near_plane",spotLight.near_plane);
+        ShaderProgram::SetFloat(canvas.shader,"far_plane",spotLight.far_plane);
         ShaderProgram::Unbind();
         canvas.position = vec2{0};
         canvas.size = vec2{200,200};
-
-//        light_t spotLight;
-//        spotLight.type = spot;
-//        spotLight.color = vec3{1.0f,1.0,1.0};
-//        spotLight.position = vec3{0.f,10.,0.};
-//        spotLight.direction = vec3{0.f,-1.f,0.};
-//        spotLight.cutoff = glm::cos(radians(60.0f));
-//        spotLight.intensity = 10;
-//        lights.push_back(spotLight);
 
         debug = new Debug();
     }

@@ -75,8 +75,9 @@ namespace wx {
             glBindFramebuffer(GL_FRAMEBUFFER, light.shadow_map.fbo);
             glClear(GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_BACK);
+//            glEnable(GL_CULL_FACE);
+//            glCullFace(GL_BACK);
+//            glCullFace(GL_FRONT);
 
             uint32_t shaderProgram = light.shadow_map.shader;
             ShaderProgram::Bind(shaderProgram);
@@ -95,7 +96,8 @@ namespace wx {
                 ShaderProgram::SetVec3(shaderProgram,"lightPos", value_ptr(light.position));
                 ShaderProgram::SetFloat(shaderProgram,"far_plane",light.far_plane);
             }
-            if(light.type==directional){
+
+            if(light.type==spot||light.type==directional){
                 mat4 pv = light.p * light.v;
                 ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
             }
@@ -119,10 +121,10 @@ namespace wx {
             }
 
             ShaderProgram::Unbind();
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-            glDisable(GL_DEPTH_TEST);
-            glDisable(GL_CULL_FACE);
+//            glCullFace(GL_BACK);
+//            glDisable(GL_CULL_FACE);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
     }
 
@@ -169,7 +171,7 @@ namespace wx {
                         lights[i].shadow_map_index = cube_map_index;
                         cube_map_index++;
                     }
-                    if(lights[i].type==directional){
+                    if(lights[i].type==directional||lights[i].type==spot){
                         int index = 2+map_index;
                         glBindTextureUnit(index,lights[i].shadow_map.texture);
                         lights[i].shadow_map_index = map_index;
@@ -198,8 +200,6 @@ namespace wx {
                 if(mat.has_metallic_roughness_texture){
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
                 }
-
-                glCheckError_("sss",196);
 
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
                 ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));

@@ -8,8 +8,8 @@ uniform vec3 color;
 
 uniform int type;
 
-float near_plane = 1;
-float far_plane = 25;
+uniform float near_plane;
+uniform float far_plane;
 
 float LinearizeDepth(float depth)
 {
@@ -22,6 +22,10 @@ void main() {
 
     if(type==0){
         FragColor = vec4(vec3(LinearizeDepth(depthC) / far_plane), 1.0); // perspective
+    }
+    if(type==1){
+        float d = (depthC-near_plane)/(far_plane - near_plane);
+        FragColor = vec4(vec3(d), 1.0); // perspective
     }
     if(type==2){
         FragColor = vec4(vec3(depthC), 1.0); // orthographic

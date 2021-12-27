@@ -726,6 +726,7 @@ namespace wx {
             ShaderProgram::SetFloat(pid,name+".intensity",light.intensity);
             ShaderProgram::SetFloat(pid,name+".cutoff",light.cutoff);
             ShaderProgram::SetInt(pid,name+".has_shadow_map",light.has_shadow_map);
+            ShaderProgram::SetFloat(pid,name+".near_plane",light.near_plane);
             ShaderProgram::SetFloat(pid,name+".far_plane",light.far_plane);
             ShaderProgram::SetInt(pid,name+".shadow_map_index",light.shadow_map_index);
             ShaderProgram::SetAttenuation(pid,name+".att",light.attenuation);

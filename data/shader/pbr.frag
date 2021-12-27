@@ -21,6 +21,7 @@ struct Light
     float intensity;
     float cutoff;
     int has_shadow_map;
+    float near_plane;
     float far_plane;
     int shadow_map_index;
     Attenuation att;
@@ -133,6 +134,51 @@ float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,fl
     return shadow;
 }
 
+float SpotShadowCalculation(sampler2D shadowMap,vec4 ShadowCoord,float bias)
+{
+    // 执行透视除法
+    if ( texture( shadowMap, (ShadowCoord.xy/ShadowCoord.w) ).z  <  (ShadowCoord.z-bias)/ShadowCoord.w ){
+        return 1.0;
+    }else{
+        return 0.0;
+    }
+
+
+    vec4 projCoords = textureProj(shadowMap, ShadowCoord.xyw );
+    // 取得当前片段在光源视角下的深度
+    float currentDepth = projCoords.z;
+
+    if(currentDepth > (ShadowCoord.z-bias)/ShadowCoord.w){
+        return 1.0;
+    }else{
+        return 0.0;
+    }
+
+    //PCF 多重采样
+    float shadow = 0.0;
+    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
+            // 检查当前片段是否在阴影中
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+
+    shadow /= 9.0;
+
+    // 超出视锥区忽略
+    if(projCoords.z>1.0){
+        return 0.0;
+    }
+
+    //    float depth = texture(shadowMap, projCoords.xy).r;
+    //    shadow = currentDepth - bias > depth ? 1.0:0.0;
+    return shadow;
+}
+
 vec3 sampleOffsetDirections[20] = vec3[]
 (
 vec3( 1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1,  1,  1),
@@ -242,6 +288,11 @@ void main(){
             if(light.type==DIRECTIONAL_LIGHT){
                 float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
                 float shadow = DirectionalShadowCalculation(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
+                Lo *= 1.0 - shadow;
+            }
+            if(light.type==SPOT_LIGHT){
+                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
+                float shadow = SpotShadowCalculation(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
                 Lo *= 1.0 - shadow;
             }
             if(light.type==POINT_LIGHT){
