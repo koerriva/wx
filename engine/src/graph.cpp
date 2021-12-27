@@ -873,7 +873,7 @@ namespace wx {
         glBindVertexArray(0);
     }
 
-    void Debug::PrintScreen(vec2 pos, const char* text, vec3 color) {
+    void Debug::PrintScreen(vec2 pos, const wchar_t* text, vec3 color) {
         glEnable(GL_CULL_FACE);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -886,7 +886,7 @@ namespace wx {
         glActiveTexture(GL_TEXTURE0);
         glBindVertexArray(VAO);
 
-        std::string chars = std::string(text);
+        wstring chars = text;
         for (auto it=chars.begin();it!=chars.end();++it) {
             Character c = Font::GetChar(*it);
             float x = pos.x+c.bearing.x*1.0f;

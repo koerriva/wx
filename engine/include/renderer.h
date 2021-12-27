@@ -369,7 +369,7 @@ namespace wx {
         GLuint VAO{}, VBO{};
     public:
         Debug();
-        void PrintScreen(vec2 pos, const char *text, vec3 color);
+        void PrintScreen(vec2 pos, const wchar_t *text, vec3 color);
     };
 }
 

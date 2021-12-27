@@ -26,6 +26,7 @@ namespace wx {
     private:
         Renderer* renderer;
         Camera* camera;
+        Debug* debug;
         vector<model_t> models;
         vector<light_t> lights;
         canvas_t canvas;

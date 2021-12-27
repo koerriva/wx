@@ -56,7 +56,7 @@ namespace wx {
         dirLight.color = vec3{1.0f};
         dirLight.direction = vec3{0,-1,1};
         dirLight.intensity = 100;
-        dirLight.shadow_map = Texture::LoadDepthMap(4096,4096);
+        dirLight.shadow_map = Texture::LoadDepthMap(2048,2048);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
 
@@ -67,7 +67,7 @@ namespace wx {
         V = glm::lookAt(lightPos, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
         dirLight.p = P;
         dirLight.v = V;
-        dirLight.far_plane = 20;
+        dirLight.far_plane = far_plane;
         lights.push_back(dirLight);
 
         light_t pointLight;
@@ -76,10 +76,10 @@ namespace wx {
         pointLight.position = vec3{0.f,6.0,0.0};
         pointLight.intensity = 50;
         pointLight.attenuation = {0.0,0.0,0.12};
-        pointLight.shadow_map = Texture::LoadDepthCubeMap(4096,4096);
+        pointLight.shadow_map = Texture::LoadDepthCubeMap(2048,2048);
         pointLight.shadow_map.shader = depth_cube_shader;
         pointLight.has_shadow_map = 1;
-        pointLight.far_plane = 100.f;
+        pointLight.far_plane = 50.f;
         pointLight.p = glm::perspective(radians(90.f),1.0f,1.f,pointLight.far_plane);
         lights.push_back(pointLight);
 
@@ -100,6 +100,8 @@ namespace wx {
 //        spotLight.cutoff = glm::cos(radians(60.0f));
 //        spotLight.intensity = 10;
 //        lights.push_back(spotLight);
+
+        debug = new Debug();
     }
 
     void GLTFViewer::Input(Window *window) {
@@ -115,6 +117,10 @@ namespace wx {
         if(window->GetKeyPressed(F3)){
             int has = lights[0].has_shadow_map;
             lights[0].has_shadow_map = has==0?1:0;
+        }
+        if(window->GetKeyPressed(F4)){
+            int has = lights[1].has_shadow_map;
+            lights[1].has_shadow_map = has==0?1:0;
         }
 
         cameraState.x = 0.f;
@@ -156,6 +162,10 @@ namespace wx {
     void GLTFViewer::Render(Window *window, float elapsedTime) {
         renderer->Render(window,models,lights,elapsedTime);
         renderer->Render(window,camera,this->models,this->lights,this->canvas, elapsedTime);
+
+        wchar_t buffer[20];
+        swprintf(buffer,L"帧率(ms) %.4f\0",elapsedTime);
+        debug->PrintScreen(vec2{window->GetWidth()-120,10},buffer,vec3{0.1,0.999,0.1});
     }
 
     void GLTFViewer::Cleanup() {

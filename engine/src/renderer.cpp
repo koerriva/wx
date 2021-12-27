@@ -246,7 +246,6 @@ namespace wx {
         glDrawArrays(GL_TRIANGLES,0,6);
         glBindVertexArray(0);
         ShaderProgram::Unbind();
-        glCheckError_("renderer",244);
         this->frame_time += delta;
         this->frame_count++;
     }

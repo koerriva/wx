@@ -108,14 +108,9 @@ float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,fl
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
 
-    // 超出视锥区忽略
-    if(projCoords.z>1.0){
-        return 0.0;
-    }
-
     //PCF 多重采样
     float shadow = 0.0;
-    vec2 texSize = textureSize(shadowMap,0);//0级纹理,原始大小
+    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
     for(int x = -1; x <= 1; ++x)
     {
         for(int y = -1; y <= 1; ++y)
@@ -128,8 +123,13 @@ float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,fl
 
     shadow /= 9.0;
 
-    float depth = texture(shadowMap, projCoords.xy).r;
-    shadow = currentDepth - bias > depth ? 1.0:0.0;
+    // 超出视锥区忽略
+    if(projCoords.z>1.0){
+        return 0.0;
+    }
+
+//    float depth = texture(shadowMap, projCoords.xy).r;
+//    shadow = currentDepth - bias > depth ? 1.0:0.0;
     return shadow;
 }
 
@@ -161,7 +161,7 @@ float PointShadowCalculation(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,fl
         float closestDepth = texture(shadowMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
         closestDepth *= nfar;   // Undo mapping [0;1]
         if(currentDepth - bias > closestDepth)
-        shadow += 1.0;
+        shadow += 0.95;
     }
     shadow /= float(samples);
 
