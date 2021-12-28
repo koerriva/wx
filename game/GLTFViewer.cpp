@@ -125,16 +125,16 @@ namespace wx {
             renderer->SetWireframeMode();
         }
         if(window->GetKeyPressed(F3)){
-            int has = lights[0].has_shadow_map;
-            lights[0].has_shadow_map = has==0?1:0;
+            int s = lights[0].state;
+            lights[0].state = s==0?1:0;
         }
         if(window->GetKeyPressed(F4)){
-            int has = lights[1].has_shadow_map;
-            lights[1].has_shadow_map = has==0?1:0;
+            int s = lights[1].state;
+            lights[1].state = s==0?1:0;
         }
         if(window->GetKeyPressed(F5)){
-            int has = lights[2].has_shadow_map;
-            lights[2].has_shadow_map = has==0?1:0;
+            int s = lights[2].state;
+            lights[2].state = s==0?1:0;
         }
         if(window->GetKeyPressed(F6)){
             debug_light_switch = !debug_light_switch;

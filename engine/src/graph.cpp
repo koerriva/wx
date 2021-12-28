@@ -720,6 +720,7 @@ namespace wx {
             auto& light = lights[i];
             string name = "lights["+ to_string(i)+"]";
             ShaderProgram::SetInt(pid,name+".type",light.type);
+            ShaderProgram::SetInt(pid,name+".state",light.state);
             ShaderProgram::SetVec3(pid,name+".color", value_ptr(light.color));
             ShaderProgram::SetVec3(pid,name+".position", value_ptr(light.position));
             ShaderProgram::SetVec3(pid,name+".direction", value_ptr(light.direction));

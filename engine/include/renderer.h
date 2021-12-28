@@ -131,6 +131,7 @@ namespace wx {
 
     typedef struct {
         light_type_t type;
+        int state;//0-关闭,1-开启
         vec3 color;
         vec3 position;
         vec3 direction;

@@ -15,6 +15,7 @@ struct Attenuation
 struct Light
 {
     int type;
+    int state;
     vec3 color;
     vec3 position;//世界空间坐标
     vec3 direction;//方向
@@ -269,6 +270,7 @@ void main(){
 
     for(int i=0;i<light_num;i++){
         Light light = lights[i];
+        if(light.state==0)continue;
 
         vec3 L = normalize(light.position - v_WorldPos); //入射光方向
         if(light.type==DIRECTIONAL_LIGHT){
