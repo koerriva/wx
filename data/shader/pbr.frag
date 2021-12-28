@@ -100,7 +100,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
+float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 {
     // 执行透视除法
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
@@ -129,30 +129,17 @@ float DirectionalShadowCalculation(sampler2D shadowMap,vec4 fragPosLightSpace,fl
         return 0.0;
     }
 
-//    float depth = texture(shadowMap, projCoords.xy).r;
-//    shadow = currentDepth - bias > depth ? 1.0:0.0;
     return shadow;
 }
 
-float SpotShadowCalculation(sampler2D shadowMap,vec4 ShadowCoord,float bias)
+float CalcSpotLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 {
     // 执行透视除法
-    if ( texture( shadowMap, (ShadowCoord.xy/ShadowCoord.w) ).z  <  (ShadowCoord.z-bias)/ShadowCoord.w ){
-        return 1.0;
-    }else{
-        return 0.0;
-    }
-
-
-    vec4 projCoords = textureProj(shadowMap, ShadowCoord.xyw );
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // 变换到[0,1]的范围
+    projCoords = projCoords * 0.5 + 0.5;
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
-
-    if(currentDepth > (ShadowCoord.z-bias)/ShadowCoord.w){
-        return 1.0;
-    }else{
-        return 0.0;
-    }
 
     //PCF 多重采样
     float shadow = 0.0;
@@ -170,12 +157,10 @@ float SpotShadowCalculation(sampler2D shadowMap,vec4 ShadowCoord,float bias)
     shadow /= 9.0;
 
     // 超出视锥区忽略
-    if(projCoords.z>1.0){
-        return 0.0;
-    }
+//    if(projCoords.z>1.0){
+//        return 0.0;
+//    }
 
-    //    float depth = texture(shadowMap, projCoords.xy).r;
-    //    shadow = currentDepth - bias > depth ? 1.0:0.0;
     return shadow;
 }
 
@@ -187,7 +172,7 @@ vec3( 1,  1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1,  1,  0),
 vec3( 1,  0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1,  0, -1),
 vec3( 0,  1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0,  1, -1)
 );
-float PointShadowCalculation(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,float nfar,float bias_n)
+float CalcPointLightShadow(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,float nfar,float bias_n)
 {
     vec3 fragToLight = fragPos - lightPos;
     float currentDepth = length(fragToLight);
@@ -253,6 +238,12 @@ void main(){
 
             float attenuationInv = light.att.constant + light.att.linear * distance + light.att.exponent * (distance * distance);//衰减
             radiance /= attenuationInv;
+
+            if(light.has_shadow_map==1){
+                float bias = 0.001;
+                float shadow = CalcPointLightShadow(shadowCubeMap[light.shadow_map_index],v_WorldPos,light.position,light.far_plane,bias);
+                radiance *= 1.0 - shadow;
+            }
         }
         if(light.type==SPOT_LIGHT){
             vec3 formLightDir = -L;
@@ -264,6 +255,18 @@ void main(){
             }else{
                 radiance *= 0.0f;
             }
+
+            if(light.has_shadow_map==1){
+                float bias = 0.001;
+                float shadow = CalcSpotLightShadow(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
+                radiance *= 1 - shadow;
+            }
+        }
+        if(light.type==DIRECTIONAL_LIGHT){
+            float bias = max(0.001 * (1.0 - dot(v_Normal, L)), 0.001);
+//            float bias = 0.001;
+            float shadow = CalcDirLightShadow(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
+            radiance *= 1 - shadow;
         }
 
         vec3 F0 = vec3(0.04);//非金属材质默认0.04
@@ -283,24 +286,6 @@ void main(){
 
         float NdotL = max(dot(N,L),0.0);
         Lo += (kD*albedo_factor.rgb/PI + specular) * radiance * NdotL;
-
-        if(light.has_shadow_map==1){
-            if(light.type==DIRECTIONAL_LIGHT){
-                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
-                float shadow = DirectionalShadowCalculation(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
-                Lo *= 1.0 - shadow;
-            }
-            if(light.type==SPOT_LIGHT){
-                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
-                float shadow = SpotShadowCalculation(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
-                Lo *= 1.0 - shadow;
-            }
-            if(light.type==POINT_LIGHT){
-                float bias = max(0.05 * (1.0 - dot(v_Normal, L)), 0.005);
-                float shadow = PointShadowCalculation(shadowCubeMap[light.shadow_map_index],v_WorldPos,light.position,light.far_plane,bias);
-                Lo *= 1.0 - shadow;
-            }
-        }
     }
     // 计算阴影
 

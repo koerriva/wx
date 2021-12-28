@@ -54,9 +54,9 @@ namespace wx {
         SHADER_MODE = true;
     }
 
-    void Renderer::SetToLightView(light_t light) {
-        this->light = light;
-        this->is_light_view = true;
+    void Renderer::SetToLightView(light_t* light) {
+        this->view_light = light;
+        this->is_light_view = light != nullptr;
     }
 
     glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
@@ -150,8 +150,8 @@ namespace wx {
         V = camera->GetViewMatrix();
 
         if(is_light_view){
-            P = light.p;
-            V = light.v;
+            P = view_light->p;
+            V = view_light->v;
         }
 
         for (auto& model:models) {
@@ -173,19 +173,19 @@ namespace wx {
 
             int cube_map_index = 0;
             int map_index = 0;
-            for (int i = 0; i < lights.size(); ++i) {
-                if(lights[i].has_shadow_map){
-                    if(lights[i].type==point){
+            for (auto & light : lights) {
+                if(light.has_shadow_map){
+                    if(light.type==point){
                         int index = 2+5+cube_map_index;
-                        glBindTextureUnit(index,lights[i].shadow_map.texture);
-                        lights[i].shadow_map_index = cube_map_index;
+                        glBindTextureUnit(index,light.shadow_map.texture);
+                        light.shadow_map_index = cube_map_index;
                         cube_map_index++;
                     }
-                    if(lights[i].type==directional||lights[i].type==spot){
+                    if(light.type==directional||light.type==spot){
                         int index = 2+map_index;
-                        glBindTextureUnit(index,lights[i].shadow_map.texture);
-                        lights[i].shadow_map_index = map_index;
-                        mat4 pv = lights[i].p * lights[i].v;
+                        glBindTextureUnit(index,light.shadow_map.texture);
+                        light.shadow_map_index = map_index;
+                        mat4 pv = light.p * light.v;
                         ShaderProgram::SetMat4(shaderProgram, "LightPV["+ to_string(map_index)+"]", value_ptr(pv));
                         map_index++;
                     }

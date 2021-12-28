@@ -31,6 +31,8 @@ namespace wx {
         vector<light_t> lights;
         canvas_t canvas;
 
+        bool debug_light_switch = false;
+
         vec2 cameraState {0.f,0.f};
         vec2 cameraDirection{0.f,0.f};
         float cameraLen = 0;

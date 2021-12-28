@@ -62,8 +62,8 @@ namespace wx {
         dirLight.shadow_map = Texture::LoadDepthMap(2048,2048);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
-        dirLight.near_plane = -10.f;
-        dirLight.far_plane = 15.f;
+        dirLight.near_plane = -20.f;
+        dirLight.far_plane = 20.f;
 
         dirLight.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, dirLight.near_plane, dirLight.far_plane);;
         dirLight.v = glm::lookAt(vec3{-5,5,0}, dirLight.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -89,26 +89,27 @@ namespace wx {
         spotLight.position = vec3{0.f,10.,0.};
         spotLight.direction = vec3{0.f,-1.f,0.};
         spotLight.cutoff = glm::cos(radians(45.0f));
-        spotLight.intensity = 100;
+        spotLight.intensity = 20;
         spotLight.shadow_map = Texture::LoadDepthMap(2048,2048);
         spotLight.shadow_map.shader = depth_shader;
         spotLight.has_shadow_map = 1;
         spotLight.near_plane = 1.f;
-        spotLight.far_plane = 25.f;
-        spotLight.p = glm::perspective(radians(90.0f),1.0f,spotLight.near_plane,spotLight.far_plane);
-        spotLight.v = glm::lookAt(spotLight.position,vec3(0,0,0),vec3(0.0f,1.0f,0.0f));
+        spotLight.far_plane = 10.f;
+        spotLight.p = glm::perspective(radians(90.f),1.0f,spotLight.near_plane,spotLight.far_plane);
+        spotLight.v = glm::lookAt(spotLight.position,spotLight.position+spotLight.direction,vec3(0.0f,0.0f,-1.0f));
 //        lights.push_back(spotLight);
 
-        canvas.shader = ShaderProgram::LoadShader("hud");
+        light_t canvas_light = spotLight;
+        canvas.shader = ShaderProgram::LoadShader("hud_debug_depth");
         canvas.vao = Mesh::UnitQuad();
-        canvas.texture = dirLight.shadow_map.texture;
+        canvas.texture = canvas_light.shadow_map.texture;
         ShaderProgram::Bind(canvas.shader);
-        ShaderProgram::SetInt(canvas.shader,"type",dirLight.type);
-        ShaderProgram::SetFloat(canvas.shader,"near_plane",dirLight.near_plane);
-        ShaderProgram::SetFloat(canvas.shader,"far_plane",dirLight.far_plane);
+        ShaderProgram::SetInt(canvas.shader,"type",canvas_light.type);
+        ShaderProgram::SetFloat(canvas.shader,"near_plane",canvas_light.near_plane);
+        ShaderProgram::SetFloat(canvas.shader,"far_plane",canvas_light.far_plane);
         ShaderProgram::Unbind();
         canvas.position = vec2{0};
-        canvas.size = vec2{200,200};
+        canvas.size = vec2{100,100};
 
         debug = new Debug();
     }
@@ -132,7 +133,12 @@ namespace wx {
             lights[1].has_shadow_map = has==0?1:0;
         }
         if(window->GetKeyPressed(F5)){
-            renderer->SetToLightView(lights[0]);
+            debug_light_switch = !debug_light_switch;
+            if(debug_light_switch){
+                renderer->SetToLightView(&lights[0]);
+            }else{
+                renderer->SetToLightView(nullptr);
+            }
         }
 
         cameraState.x = 0.f;
@@ -192,6 +198,6 @@ int main(int argc,char** argv) {
     wx::Log::Init();
     WX_INFO("我的游戏引擎 0.2");
     wx::GLTFViewer game;
-    wx::GameEngine engine("我的游戏引擎 0.2.2", 1280, 720, true, &game);
+    wx::GameEngine engine("GLTFViewer Ver:0.2.2", 1280, 720, true, &game);
     engine.Run();
 }

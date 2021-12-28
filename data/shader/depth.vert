@@ -6,5 +6,5 @@ uniform mat4 PV;
 uniform mat4 M;
 
 void main(){
-    gl_Position = PV*M*vec4(position,1.0);
+    gl_Position = PV*M*vec4(position, 1.0);
 }
