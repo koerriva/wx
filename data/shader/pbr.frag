@@ -143,23 +143,23 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 //        {
 //            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
 //            // 检查当前片段是否在阴影中
-//            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+//            shadow += currentDepth - bias > pcfDepth ? 0.91 : 0.0;
 //        }
 //    }
 //    shadow /= 9.0;
 
     //Poisson Sampling
-//    for(int i=0;i<4;i++){
-//        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
-//        shadow += currentDepth - 0.005 > psDepth ? 0.2 : 0.0;
-//    }
+    for(int i=0;i<4;i++){
+        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
+        shadow += currentDepth - bias > psDepth ? 0.24 : 0.0;
+    }
 
     //Stratified Poisson Sampling
-    for(int i=0;i<4;i++){
-        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
-        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
-        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
-    }
+//    for(int i=0;i<4;i++){
+//        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
+//        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
+//        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
+//    }
 
     // 超出视锥区忽略
     if(projCoords.z>1.0){
@@ -178,14 +178,33 @@ float CalcSpotLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
 
-    //Stratified Poisson Sampling
     float shadow = 0.0;
+
+    //PCF 多重采样
+//    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
+//    for(int x = -1; x <= 1; ++x)
+//    {
+//        for(int y = -1; y <= 1; ++y)
+//        {
+//            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
+//            // 检查当前片段是否在阴影中
+//            shadow += currentDepth - bias > pcfDepth ? 0.91 : 0.0;
+//        }
+//    }
+//    shadow /= 9.0;
+
+    //Poisson Sampling
     for(int i=0;i<4;i++){
-        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
-        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
-        shadow += currentDepth - 0.005 > psDepth ? 0.2 : 0.0;
+        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
+        shadow += currentDepth - bias > psDepth ? 0.21 : 0.0;
     }
 
+    //Stratified Poisson Sampling
+//    for(int i=0;i<4;i++){
+//        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
+//        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
+//        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
+//    }
 
     // 超出视锥区忽略
 //    if(projCoords.z>1.0){
@@ -207,12 +226,8 @@ float CalcPointLightShadow(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,floa
 {
     vec3 fragToLight = fragPos - lightPos;
     float currentDepth = length(fragToLight);
-    float shadow = 0.0;
-    float depth = texture(shadowMap, fragToLight).r;
-    depth *= nfar;
-    shadow = currentDepth - bias_n > depth ? 1.0:0.0;
 
-    shadow = 0.0;
+    float shadow = 0.0;
     float bias = 0.15;
     int samples = 20;
     float viewDistance = length(cameraPos - fragPos);
@@ -250,6 +265,8 @@ void main(){
 
     vec3 Lo = vec3(0.0); //出射光线的辐射率
 
+    float shadow_factor = 1.0;
+
     for(int i=0;i<light_num;i++){
         Light light = lights[i];
 
@@ -261,6 +278,8 @@ void main(){
 
         vec3 radiance = light.color * light.intensity;
 
+        float bias = max(0.003 * (1.0 - dot(v_Normal, L)), 0.001);//shadow bias
+
         if(light.type==POINT_LIGHT){
             float distance = length(light.position - v_WorldPos);
 
@@ -271,7 +290,7 @@ void main(){
             radiance /= attenuationInv;
 
             if(light.has_shadow_map==1){
-                float bias = 0.001;
+//                float bias = 0.001;
                 float shadow = CalcPointLightShadow(shadowCubeMap[light.shadow_map_index],v_WorldPos,light.position,light.far_plane,bias);
                 radiance *= 1.0 - shadow;
             }
@@ -288,13 +307,12 @@ void main(){
             }
 
             if(light.has_shadow_map==1){
-                float bias = 0.001;
+//                float bias = 0.001;
                 float shadow = CalcSpotLightShadow(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
                 radiance *= 1 - shadow;
             }
         }
-        if(light.type==DIRECTIONAL_LIGHT){
-            float bias = max(0.003 * (1.0 - dot(v_Normal, L)), 0.001);
+        if(light.type==DIRECTIONAL_LIGHT&&light.has_shadow_map==1){
 //            float bias = 0.001;
             float shadow = CalcDirLightShadow(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
             radiance *= 1 - shadow;

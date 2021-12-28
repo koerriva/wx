@@ -81,7 +81,7 @@ namespace wx {
         pointLight.near_plane = 1.f;
         pointLight.far_plane = 50.f;
         pointLight.p = glm::perspective(radians(90.f),1.0f,pointLight.near_plane,pointLight.far_plane);
-//        lights.push_back(pointLight);
+        lights.push_back(pointLight);
 
         light_t spotLight;
         spotLight.type = spot;
@@ -133,6 +133,10 @@ namespace wx {
             lights[1].has_shadow_map = has==0?1:0;
         }
         if(window->GetKeyPressed(F5)){
+            int has = lights[2].has_shadow_map;
+            lights[2].has_shadow_map = has==0?1:0;
+        }
+        if(window->GetKeyPressed(F6)){
             debug_light_switch = !debug_light_switch;
             if(debug_light_switch){
                 renderer->SetToLightView(&lights[0]);
