@@ -202,6 +202,6 @@ int main(int argc,char** argv) {
     wx::Log::Init();
     WX_INFO("我的游戏引擎 0.2");
     wx::GLTFViewer game;
-    wx::GameEngine engine("GLTFViewer Ver:0.2.2", 1280, 720, true, &game);
+    wx::GameEngine engine("GLTFViewer Ver:0.2.3", 1280, 720, true, &game);
     engine.Run();
 }
