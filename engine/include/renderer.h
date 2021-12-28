@@ -345,6 +345,9 @@ namespace wx {
 
         float frame_time = 0;
         uint32_t frame_count = 0;
+
+        light_t light;
+        bool is_light_view = false;
     public:
         Renderer(/* args */);
 
@@ -355,6 +358,8 @@ namespace wx {
         void SetWireframeMode();
 
         void SetShaderMode();
+
+        void SetToLightView(light_t light);
 
         void Render(const Window *window, vector<model_t> &models, vector<light_t> &lights, float delta);
 

@@ -54,6 +54,11 @@ namespace wx {
         SHADER_MODE = true;
     }
 
+    void Renderer::SetToLightView(light_t light) {
+        this->light = light;
+        this->is_light_view = true;
+    }
+
     glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
     void Renderer::Render(const Window *window, vector<model_t>& models, vector<light_t>& lights,float delta) {
 
@@ -143,6 +148,11 @@ namespace wx {
         glm::mat4 P(1.0f),V(1.0f),M(1.0f);
         P = glm::perspective(glm::radians(60.f),aspect,.1f,1000.f);
         V = camera->GetViewMatrix();
+
+        if(is_light_view){
+            P = light.p;
+            V = light.v;
+        }
 
         for (auto& model:models) {
             M = translate(mat4{1},model.transform.position)
