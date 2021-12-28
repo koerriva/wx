@@ -97,7 +97,7 @@ namespace wx {
         spotLight.far_plane = 10.f;
         spotLight.p = glm::perspective(radians(90.f),1.0f,spotLight.near_plane,spotLight.far_plane);
         spotLight.v = glm::lookAt(spotLight.position,spotLight.position+spotLight.direction,vec3(0.0f,0.0f,-1.0f));
-//        lights.push_back(spotLight);
+        lights.push_back(spotLight);
 
         light_t canvas_light = spotLight;
         canvas.shader = ShaderProgram::LoadShader("hud_debug_depth");

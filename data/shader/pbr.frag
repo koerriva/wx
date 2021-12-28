@@ -100,11 +100,29 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-vec2 poissonDisk[4] = vec2[](
+float random(vec3 seed, int i){
+    vec4 seed4 = vec4(seed,i);
+    float dot_product = dot(seed4, vec4(12.9898,78.233,45.164,94.673));
+    return fract(sin(dot_product) * 43758.5453);
+}
+
+vec2 poissonDisk[16] = vec2[](
 vec2( -0.94201624, -0.39906216 ),
 vec2( 0.94558609, -0.76890725 ),
 vec2( -0.094184101, -0.92938870 ),
-vec2( 0.34495938, 0.29387760 )
+vec2( 0.34495938, 0.29387760 ),
+vec2( -0.91588581, 0.45771432 ),
+vec2( -0.81544232, -0.87912464 ),
+vec2( -0.38277543, 0.27676845 ),
+vec2( 0.97484398, 0.75648379 ),
+vec2( 0.44323325, -0.97511554 ),
+vec2( 0.53742981, -0.47373420 ),
+vec2( -0.26496911, -0.41893023 ),
+vec2( 0.79197514, 0.19090188 ),
+vec2( -0.24188840, 0.99706507 ),
+vec2( -0.81409955, 0.91437590 ),
+vec2( 0.19984126, 0.78641367 ),
+vec2( 0.14383161, -0.14100790 )
 );
 float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 {
@@ -131,9 +149,16 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 //    shadow /= 9.0;
 
     //Poisson Sampling
+//    for(int i=0;i<4;i++){
+//        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
+//        shadow += currentDepth - 0.005 > psDepth ? 0.2 : 0.0;
+//    }
+
+    //Stratified Poisson Sampling
     for(int i=0;i<4;i++){
-        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
-        shadow += currentDepth - 0.005 > psDepth ? 0.2 : 0.0;
+        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
+        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
+        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
     }
 
     // 超出视锥区忽略
@@ -153,20 +178,14 @@ float CalcSpotLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
 
-    //PCF 多重采样
+    //Stratified Poisson Sampling
     float shadow = 0.0;
-    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
-            // 检查当前片段是否在阴影中
-            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
-        }
+    for(int i=0;i<4;i++){
+        int index = int(16.0*random(fragPosLightSpace.xyz, i))%16;
+        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
+        shadow += currentDepth - 0.005 > psDepth ? 0.2 : 0.0;
     }
 
-    shadow /= 9.0;
 
     // 超出视锥区忽略
 //    if(projCoords.z>1.0){
@@ -275,7 +294,7 @@ void main(){
             }
         }
         if(light.type==DIRECTIONAL_LIGHT){
-            float bias = max(0.001 * (1.0 - dot(v_Normal, L)), 0.001);
+            float bias = max(0.003 * (1.0 - dot(v_Normal, L)), 0.001);
 //            float bias = 0.001;
             float shadow = CalcDirLightShadow(shadowMap[light.shadow_map_index],v_LightWorldPos[light.shadow_map_index],bias);
             radiance *= 1 - shadow;
