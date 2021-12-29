@@ -13,6 +13,8 @@
 #define CGLTF_IMPLEMENTATION
 #include "cgltf.h"
 
+#include <glm/gtx/string_cast.hpp>
+
 namespace wx {
     //Mesh
     Mesh::Mesh(vector<float> &vertices,vector<unsigned>& indices,vector<float> &normals,vector<float> &texCoords,vector<float>& colors) {
@@ -300,18 +302,34 @@ namespace wx {
                 model.transform.scale = {cnode.scale[0],cnode.scale[1],cnode.scale[2]};
             }
 
+            if(cnode.skin){
+                auto skinMatAccessor = cnode.skin->inverse_bind_matrices;
+                model.has_skin = 1;
+                model.skin.joints_count = cnode.skin->joints_count;
+                model.skin.bind_mat_count = cnode.skin->inverse_bind_matrices->count;
+                //copy data
+                int offset = skinMatAccessor->buffer_view->offset;
+                int size = model.skin.bind_mat_count*16;
+                void* data_buffer = (uint8*)(skinMatAccessor->buffer_view->buffer->data) + offset;
+                float* data_f32_buffer = (float*)data_buffer;
+
+                for (int j = 0; j < model.skin.bind_mat_count; ++j) {
+                    mat4 m = make_mat4(data_f32_buffer+j*16);
+                    model.skin.bind_mat[j] = m;
+
+                    WX_CORE_TRACE("{}", glm::to_string(m));
+                }
+            }
+
             for (int j = 0; j < cmesh->primitives_count; ++j) {
                 mesh_t mesh;
-
-                std::cout << "Upload Mesh ..." << std::endl;
 
                 glGenVertexArrays(1,&mesh.vao);
                 glBindVertexArray(mesh.vao);
 
                 uint32_t vbo = 0;
 
-
-                std::cout << "Mesh : " << cmesh->name << std::endl;
+                WX_CORE_TRACE("MESH : {}",cmesh->name);
 
                 cgltf_primitive primitive = cmesh->primitives[j];
 
@@ -320,70 +338,76 @@ namespace wx {
                 cgltf_accessor* texcoord_accessor = nullptr;
                 cgltf_accessor* indices_accessor = primitive.indices;
 
+                cgltf_accessor* joints_accessor = nullptr;
+                cgltf_accessor* weights_accessor = nullptr;
+
+                WX_CORE_TRACE("ATTR :");
                 for (int k = 0; k < primitive.attributes_count; ++k) {
                     auto attr = primitive.attributes[k];
-//                    std::cout << "Attr L : " << attr.name << std::endl;
                     if(strcmp(attr.name,"POSITION")==0){
-//                        std::cout << "Attr : " << attr.name << std::endl;
+                        WX_CORE_TRACE("\tPOSITION : {}",attr.name);
                         position_accessor = attr.data;
                         continue;
                     }
                     if(strcmp(attr.name,"NORMAL")==0){
-//                        std::cout << "Attr : " << attr.name << std::endl;
+                        WX_CORE_TRACE("\tNORMAL : {}",attr.name);
                         normal_accessor = attr.data;
                         continue;
                     }
                     if(strcmp(attr.name,"TEXCOORD_0")==0){
-//                        std::cout << "Attr : " << attr.name << std::endl;
+                        WX_CORE_TRACE("\tTEXCOORD_0 : {}",attr.name);
                         texcoord_accessor = attr.data;
+                        continue;
+                    }
+                    if(strcmp(attr.name,"JOINTS_0")==0){
+                        WX_CORE_TRACE("\tJOINTS_0 : {}",attr.name);
+                        joints_accessor = attr.data;
+                        continue;
+                    }
+                    if(strcmp(attr.name,"WEIGHTS_0")==0){
+                        WX_CORE_TRACE("\tWEIGHTS_0 : {}",attr.name);
+                        weights_accessor = attr.data;
                         continue;
                     }
                 }
 
-                int offset = position_accessor->buffer_view->offset;
-                void* vertices_buffer = (uint8_t*)(position_accessor->buffer_view->buffer->data)+offset;
-                int vertices_num = position_accessor->count;
-                int vertices_size = position_accessor->buffer_view->size;
+                if(position_accessor){
+                    int offset = position_accessor->buffer_view->offset;
+                    void* vertices_buffer = (uint8_t*)(position_accessor->buffer_view->buffer->data)+offset;
+                    int vertices_num = position_accessor->count;
+                    int vertices_size = position_accessor->buffer_view->size;
 
-                offset = normal_accessor->buffer_view->offset;
-                void* normal_buffer = (uint8_t*)(normal_accessor->buffer_view->buffer->data)+offset;
-                int normal_num = normal_accessor->count;
-                int normal_size = normal_accessor->buffer_view->size;
+                    mesh.vertices_count = vertices_num;
 
-                void* texcoord0_buffer;
-                int texcoord0_num;
-                int texcoord0_size;
-                if(texcoord_accessor){
-                    offset = texcoord_accessor->buffer_view->offset;
-                    texcoord0_buffer = (uint8_t*)(texcoord_accessor->buffer_view->buffer->data)+offset;
-                    texcoord0_num = texcoord_accessor->count;
-                    texcoord0_size = texcoord_accessor->buffer_view->size;
+                    //upload vertices
+                    glGenBuffers(1,&vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                    glBufferData(GL_ARRAY_BUFFER,vertices_size,vertices_buffer,GL_STATIC_DRAW);
+                    glEnableVertexAttribArray(0);
+                    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
                 }
 
-                offset = indices_accessor->buffer_view->offset;
-                void* indices_buffer = (uint8_t*)(indices_accessor->buffer_view->buffer->data)+offset;
-                int indices_num = indices_accessor->count;
-                int indices_size = indices_accessor->buffer_view->size;
+                if(normal_accessor){
+                    int offset = normal_accessor->buffer_view->offset;
+                    void* normal_buffer = (uint8_t*)(normal_accessor->buffer_view->buffer->data)+offset;
+                    int normal_num = normal_accessor->count;
+                    int normal_size = normal_accessor->buffer_view->size;
 
-                mesh.vertices_count = vertices_num;
-                mesh.indices_count = indices_num;
+                    //upload normals
+                    glGenBuffers(1,&vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                    glBufferData(GL_ARRAY_BUFFER,normal_size,normal_buffer,GL_STATIC_DRAW);
+                    glEnableVertexAttribArray(1);
+                    glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+                }
 
-                //vertices
-                glGenBuffers(1,&vbo);
-                glBindBuffer(GL_ARRAY_BUFFER,vbo);
-                glBufferData(GL_ARRAY_BUFFER,vertices_size,vertices_buffer,GL_STATIC_DRAW);
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-
-                //normals
-                glGenBuffers(1,&vbo);
-                glBindBuffer(GL_ARRAY_BUFFER,vbo);
-                glBufferData(GL_ARRAY_BUFFER,normal_size,normal_buffer,GL_STATIC_DRAW);
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-
-                //texcoords
                 if(texcoord_accessor){
+                    int offset = texcoord_accessor->buffer_view->offset;
+                    void* texcoord0_buffer = (uint8_t*)(texcoord_accessor->buffer_view->buffer->data)+offset;
+                    int texcoord0_num = texcoord_accessor->count;
+                    int texcoord0_size = texcoord_accessor->buffer_view->size;
+
+                    //upload texture
                     glGenBuffers(1,&vbo);
                     glBindBuffer(GL_ARRAY_BUFFER,vbo);
                     glBufferData(GL_ARRAY_BUFFER,texcoord0_size,texcoord0_buffer,GL_STATIC_DRAW);
@@ -391,18 +415,154 @@ namespace wx {
                     glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
                 }
 
-                uint32_t ebo = 0 ;
-                glGenBuffers(1,&ebo);
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
-                glBufferData(GL_ELEMENT_ARRAY_BUFFER,indices_size,indices_buffer,GL_STATIC_DRAW);
+                if(indices_accessor){
+                    int offset = indices_accessor->buffer_view->offset;
+                    void* indices_buffer = (uint8_t*)(indices_accessor->buffer_view->buffer->data)+offset;
+                    int indices_num = indices_accessor->count;
+                    int indices_size = indices_accessor->buffer_view->size;
 
-                mesh.indices_type = GL_UNSIGNED_SHORT;
+                    mesh.indices_count = indices_num;
+
+                    uint32_t ebo = 0 ;
+                    glGenBuffers(1,&ebo);
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+                    glBufferData(GL_ELEMENT_ARRAY_BUFFER,indices_size,indices_buffer,GL_STATIC_DRAW);
+
+                    mesh.indices_type = GL_UNSIGNED_SHORT;
+                }
+
+                if(joints_accessor){
+                    int offset = joints_accessor->buffer_view->offset;
+                    void* data_buffer = (uint8_t*)(joints_accessor->buffer_view->buffer->data)+offset;
+                    int data_count = joints_accessor->count;
+                    int data_stride = joints_accessor->stride;
+                    cgltf_component_type data_comp_type = joints_accessor->component_type;
+                    cgltf_type data_type = joints_accessor->type;
+                    int comp_size = 1;
+                    int type_size = 1;
+                    switch (data_comp_type) {
+                        case cgltf_component_type_r_8:
+                        case cgltf_component_type_r_8u:
+                            comp_size = 1;break;
+                        case cgltf_component_type_r_16:
+                        case cgltf_component_type_r_16u:
+                            comp_size = 2;break;
+                        case cgltf_component_type_r_32u:
+                        case cgltf_component_type_r_32f:
+                            comp_size = 4;break;
+                        default:{
+                            WX_CORE_CRITICAL("数据格式不支持!");
+                            exit(-10002);
+                        }
+                    }
+                    switch (data_type) {
+                        case cgltf_type_scalar:
+                            type_size = 1;break;
+                        case cgltf_type_vec2:
+                            type_size = 2;break;
+                        case cgltf_type_vec3:
+                            type_size = 3;break;
+                        case cgltf_type_vec4:
+                        case cgltf_type_mat2:
+                            type_size = 4;break;
+                        case cgltf_type_mat3:
+                            type_size = 9;break;
+                        case cgltf_type_mat4:
+                            type_size = 16;break;
+                        default:{
+                            WX_CORE_CRITICAL("数据类型不支持!");
+                            exit(-10002);
+                        }
+                    }
+
+                    int byte_size = joints_accessor->buffer_view->size;
+                    int old_data_size =  data_count * comp_size * type_size;
+
+                    uint8_t* addr = (uint8*)data_buffer;
+                    std::vector<uvec4> data;
+                    for (int k = 0; k < data_count; ++k) {
+                        uvec4 j{addr[k*4+0],addr[k*4+1],addr[k*4+2],addr[k*4+3]};
+                        data.push_back(j);
+                        WX_CORE_TRACE("v{}:{}",k,glm::to_string(j));
+                    }
+                    int new_data_size = data_count * 4 * type_size;
+                    //upload joints
+                    glGenBuffers(1,&vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                    glBufferData(GL_ARRAY_BUFFER,new_data_size,data.data(),GL_STATIC_DRAW);
+                    glEnableVertexAttribArray(3);
+                    glVertexAttribPointer(3,4,GL_UNSIGNED_INT,GL_FALSE,16,nullptr);
+                }
+
+                if(weights_accessor){
+                    int offset = weights_accessor->buffer_view->offset;
+                    void* data_buffer = (uint8_t*)(weights_accessor->buffer_view->buffer->data)+offset;
+                    int data_count = weights_accessor->count;
+                    int data_stride = weights_accessor->stride;
+                    cgltf_component_type data_comp_type = weights_accessor->component_type;
+                    cgltf_type data_type = weights_accessor->type;
+                    int comp_size = 1;
+                    int type_size = 1;
+                    switch (data_comp_type) {
+                        case cgltf_component_type_r_8:
+                        case cgltf_component_type_r_8u:
+                            comp_size = 1;break;
+                        case cgltf_component_type_r_16:
+                        case cgltf_component_type_r_16u:
+                            comp_size = 2;break;
+                        case cgltf_component_type_r_32u:
+                        case cgltf_component_type_r_32f:
+                            comp_size = 4;break;
+                        default:{
+                            WX_CORE_CRITICAL("数据格式不支持!");
+                            exit(-10002);
+                        }
+                    }
+                    switch (data_type) {
+                        case cgltf_type_scalar:
+                            type_size = 1;break;
+                        case cgltf_type_vec2:
+                            type_size = 2;break;
+                        case cgltf_type_vec3:
+                            type_size = 3;break;
+                        case cgltf_type_vec4:
+                        case cgltf_type_mat2:
+                            type_size = 4;break;
+                        case cgltf_type_mat3:
+                            type_size = 9;break;
+                        case cgltf_type_mat4:
+                            type_size = 16;break;
+                        default:{
+                            WX_CORE_CRITICAL("数据类型不支持!");
+                            exit(-10002);
+                        }
+                    }
+
+                    int byte_size = weights_accessor->buffer_view->size;
+                    int old_data_size =  data_count * comp_size * type_size;
+
+                    float* addr = (float*)data_buffer;
+                    std::vector<vec4> data;
+                    for (int k = 0; k < data_count; ++k) {
+                        vec4 j{addr[k*4+0],addr[k*4+1],addr[k*4+2],addr[k*4+3]};
+                        data.push_back(j);
+                        WX_CORE_TRACE("w{}:{}",k,glm::to_string(j));
+                    }
+                    int new_data_size = data_count * 4 * type_size;
+                    //upload joints
+                    glGenBuffers(1,&vbo);
+                    glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                    glBufferData(GL_ARRAY_BUFFER,new_data_size,data.data(),GL_STATIC_DRAW);
+                    glEnableVertexAttribArray(4);
+                    glVertexAttribPointer(4,4,GL_FLOAT,GL_FALSE,16,nullptr);
+                }
+
                 glBindVertexArray(0);
 
                 if(primitive.material){
                     if(primitive.material->has_pbr_metallic_roughness){
                         cgltf_material* cmat = primitive.material;
-                        WX_CORE_TRACE("Set Material {}",cmat->name);
+                        WX_CORE_TRACE("MAT : {}",cmat->name);
                         mesh.materials[mesh.material_count] = materials[cmat->name];
                         mesh.material_count++;
                     }
@@ -629,92 +789,43 @@ namespace wx {
         glDeleteProgram(pid);
     }
 
-    void ShaderProgram::SetFloat(uint32_t pid,const string& _name, float value) {
+    int ShaderProgram::FindUniformLocation(uint32_t pid, const string &_name) {
         int location = 0;
         string name = to_string(pid) + "_" + _name;
         if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
+//            cout << "Find Uniform : " << name << endl;
             location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
+//            cout << "Uniform[" << name << "] Location=" << location << endl;
             uniforms[name]=location;
         }else{
             location = uniforms[name];
         }
-        glUniform1f(location,value);
+        return location;
+    }
+
+    void ShaderProgram::SetFloat(uint32_t pid,const string& _name, float value) {
+        glUniform1f(FindUniformLocation(pid,_name),value);
     }
     void ShaderProgram::SetMat4(uint32_t pid,const string& _name, float *value) {
-        int location = 0;
-        string name = to_string(pid) + "_" + _name;
-        if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
-            uniforms[name]=location;
-        }else{
-            location = uniforms[name];
-        }
-        glUniformMatrix4fv(location,1,GL_FALSE,value);
+        glUniformMatrix4fv(FindUniformLocation(pid,_name),1,GL_FALSE,value);
     }
     void ShaderProgram::SetVec4(uint32_t pid,const string& _name, float *value) {
-        int location = 0;
-        string name = to_string(pid) + "_" + _name;
-        if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
-            uniforms[name]=location;
-        }else{
-            location = uniforms[name];
-        }
-        glUniform4fv(location,1,value);
+        glUniform4fv(FindUniformLocation(pid,_name),1,value);
     }
     void ShaderProgram::SetVec3(uint32_t pid,const string& _name, float *value) {
-        int location = 0;
-        string name = to_string(pid) + "_" + _name;
-        if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
-            uniforms[name]=location;
-        }else{
-            location = uniforms[name];
-        }
-        glUniform3fv(location,1,value);
+        glUniform3fv(FindUniformLocation(pid,_name),1,value);
     }
     void ShaderProgram::SetVec2(uint32_t pid,const string& _name, float *value){
-        int location = 0;
-        string name = to_string(pid) + "_" + _name;
-        if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
-            uniforms[name]=location;
-        }else{
-            location = uniforms[name];
-        }
-        glUniform2fv(location,1,value);
+        glUniform2fv(FindUniformLocation(pid,_name),1,value);
     }
-
     void ShaderProgram::SetInt(uint32_t pid, const string& _name, int value) {
-        int location = 0;
-        string name = to_string(pid) + "_" + _name;
-        if(uniforms.count(name)==0){
-            cout << "Find Uniform : " << name << endl;
-            location = glGetUniformLocation(pid,_name.c_str());
-            cout << "Uniform[" << name << "] Location=" << location << endl;
-            uniforms[name]=location;
-        }else{
-            location = uniforms[name];
-        }
-        glUniform1i(location,value);
+        glUniform1i(FindUniformLocation(pid,_name),value);
     }
-
     void ShaderProgram::SetAttenuation(uint32_t pid, const string& _name, attenuation_t value){
         ShaderProgram::SetFloat(pid,_name+".constant",value.constant);
         ShaderProgram::SetFloat(pid,_name+".exponent",value.exponent);
         ShaderProgram::SetFloat(pid,_name+".linear",value.linear);
     }
-
     void ShaderProgram::SetLight(uint32_t pid, const string& _name, vector<light_t> &lights) {
         for (int i = 0; i < lights.size(); ++i) {
             auto& light = lights[i];

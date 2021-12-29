@@ -21,26 +21,35 @@ namespace wx {
 //        Plane.transform.scale += vec3(100);
 //        this->models.push_back(Plane);
 
-        auto Scene = Mesh::LoadModelFromGLTF("model\\Scene.gltf");
-        for (auto& m:Scene) {
+        auto Snake = Mesh::LoadModelFromGLTF("model\\Snake.gltf");
+        for (auto& m:Snake) {
             this->models.push_back(m);
         }
 
-        auto FlySets = Mesh::LoadModelFromGLTF("model\\CesiumDrone.glb");
-        for (auto& f:FlySets) {
-            f.transform.position += vec3(4);
-            this->models.push_back(f);
-        }
+//        auto Scene = Mesh::LoadModelFromGLTF("model\\Scene.gltf");
+//        for (auto& m:Scene) {
+//            this->models.push_back(m);
+//        }
 
-        auto Sphere = Mesh::LoadModelFromGLTF("model\\Sphere.gltf")[0];
-        Sphere.transform.position += vec3(-5,5,0);
-        this->models.push_back(Sphere);
-        model_t pointLightModel = Sphere;
-        pointLightModel.transform.position = vec3(0,6,0);
-        this->models.push_back(pointLightModel);
-        model_t spotLightModel = Sphere;
-        spotLightModel.transform.position = vec3(0,10,0);
-        this->models.push_back(spotLightModel);
+//        auto FlySets = Mesh::LoadModelFromGLTF("model\\CesiumDrone.glb");
+//        for (auto& f:FlySets) {
+//            f.transform.position += vec3(4);
+//            this->models.push_back(f);
+//        }
+
+//        auto Sphere = Mesh::LoadModelFromGLTF("model\\Sphere.gltf")[0];
+//        Sphere.transform.position += vec3(-5,5,0);
+//        this->models.push_back(Sphere);
+//        model_t pointLightModel = Sphere;
+//        pointLightModel.transform.position = vec3(0,6,0);
+//        this->models.push_back(pointLightModel);
+//        model_t spotLightModel = Sphere;
+//        spotLightModel.transform.position = vec3(0,10,0);
+//        this->models.push_back(spotLightModel);
+
+//        auto arm = Mesh::LoadModelFromGLTF("model\\arm_skin.gltf")[0];
+//        arm.transform.scale += vec3(10);
+//        this->models.push_back(arm);
 
         camera = new Camera({0.0,2.0,10.0});
 

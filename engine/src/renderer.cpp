@@ -115,10 +115,15 @@ namespace wx {
                          * scale(mat4{1},model.transform.scale);
 
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+                ShaderProgram::SetInt(shaderProgram,"use_skin",model.has_skin);
+                if(model.has_skin==1){
+                    for (int i = 0; i < model.skin.bind_mat_count; ++i) {
+                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(model.skin.bind_mat[i]));
+                    }
+                }
 
                 for (int i = 0; i < model.mesh_count; ++i) {
                     mesh_t& mesh = model.meshes[i];
-
                     glBindVertexArray(mesh.vao);
                     glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
                     glBindVertexArray(0);
@@ -209,6 +214,13 @@ namespace wx {
 
                 if(mat.has_metallic_roughness_texture){
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
+                }
+
+                ShaderProgram::SetInt(shaderProgram,"use_skin",model.has_skin);
+                if(model.has_skin==1){
+                    for (int j = 0; j < model.skin.bind_mat_count; ++j) {
+                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(j) + "]", value_ptr(model.skin.bind_mat[j]));
+                    }
                 }
 
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));

@@ -99,16 +99,25 @@ namespace wx {
         uint32_t vao;
         int vertices_count = 0;
         int indices_count = 0;
+        int joints_count = 0;
         uint32_t indices_type;
         material_instance_t materials[10];
         uint32_t material_count = 0;
     } mesh_t;
+#define MAX_JOINT_MAT 64
+    typedef struct {
+        int joints_count = 0;
+        int bind_mat_count = 0;
+        mat4 bind_mat[MAX_JOINT_MAT];
+    } skin_t;
 
     typedef struct {
         mesh_t meshes[10];
         uint32_t mesh_count = 0;
         transform_t transform;
         material_t material;
+        skin_t skin;
+        int has_skin = 0;
     } model_t;
 
     typedef struct {
@@ -236,6 +245,8 @@ namespace wx {
         static void Unbind();
 
         static void Cleanup(uint32_t pid);
+
+        static int FindUniformLocation(uint32_t pid, const string &name);
 
         static void SetFloat(uint32_t pid, const string &name, float value);
 
