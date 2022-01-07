@@ -13,7 +13,7 @@
 
 namespace wx {
     using namespace glm;
-    struct Character{
+    struct UChar{
         bool cached=false;
         GLuint texture;
         ivec2 size;
@@ -21,7 +21,7 @@ namespace wx {
         GLuint advance;
     };
 
-    std::unordered_map<wchar_t,Character> chars;
+    std::unordered_map<wchar_t,UChar> chars;
 
     FT_Library ft;
     FT_Face fc;
@@ -68,10 +68,10 @@ namespace wx {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        Character character{true,texture
-                ,ivec2{fc->glyph->bitmap.width,fc->glyph->bitmap.rows}
-                ,ivec2{fc->glyph->bitmap_left,fc->glyph->bitmap_top}
-                ,static_cast<GLuint>(fc->glyph->advance.x)};
+        UChar character{true, texture
+                , ivec2{fc->glyph->bitmap.width,fc->glyph->bitmap.rows}
+                , ivec2{fc->glyph->bitmap_left,fc->glyph->bitmap_top}
+                , static_cast<GLuint>(fc->glyph->advance.x)};
         chars[c] = character;
     }
 
@@ -79,7 +79,7 @@ namespace wx {
         chars.clear();
     }
 
-    Character Font::GetChar(wchar_t c) {
+    UChar Font::GetChar(wchar_t c) {
         auto& ch = chars[c];
         if(!ch.cached){
             if(FT_Load_Char(fc,c,FT_LOAD_RENDER)){

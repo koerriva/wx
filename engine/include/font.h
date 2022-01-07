@@ -10,7 +10,7 @@
 namespace wx {
     using namespace std;
 
-    struct Character;
+    struct UChar;
     class Font{
     private:
         const char* fontpath;
@@ -25,7 +25,7 @@ namespace wx {
     public:
         static const int PIXEL_SIZE = 16;
         static void Init();
-        static Character GetChar(wchar_t c);
+        static UChar GetChar(wchar_t c);
         static void Cleanup();
     };
 }

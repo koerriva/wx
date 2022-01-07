@@ -308,7 +308,7 @@ namespace wx {
                 model.skin.joints_count = cnode.skin->joints_count;
                 model.skin.bind_mat_count = cnode.skin->inverse_bind_matrices->count;
                 //copy data
-                int offset = skinMatAccessor->buffer_view->offset;
+                int offset = skinMatAccessor->offset+skinMatAccessor->buffer_view->offset;
                 int size = model.skin.bind_mat_count*16;
                 void* data_buffer = (uint8*)(skinMatAccessor->buffer_view->buffer->data) + offset;
                 float* data_f32_buffer = (float*)data_buffer;
@@ -372,7 +372,7 @@ namespace wx {
                 }
 
                 if(position_accessor){
-                    int offset = position_accessor->buffer_view->offset;
+                    int offset = position_accessor->offset+position_accessor->buffer_view->offset;
                     void* vertices_buffer = (uint8_t*)(position_accessor->buffer_view->buffer->data)+offset;
                     int vertices_num = position_accessor->count;
                     int vertices_size = position_accessor->buffer_view->size;
@@ -388,7 +388,7 @@ namespace wx {
                 }
 
                 if(normal_accessor){
-                    int offset = normal_accessor->buffer_view->offset;
+                    int offset = normal_accessor->offset+normal_accessor->buffer_view->offset;
                     void* normal_buffer = (uint8_t*)(normal_accessor->buffer_view->buffer->data)+offset;
                     int normal_num = normal_accessor->count;
                     int normal_size = normal_accessor->buffer_view->size;
@@ -402,7 +402,7 @@ namespace wx {
                 }
 
                 if(texcoord_accessor){
-                    int offset = texcoord_accessor->buffer_view->offset;
+                    int offset = texcoord_accessor->offset + texcoord_accessor->buffer_view->offset;
                     void* texcoord0_buffer = (uint8_t*)(texcoord_accessor->buffer_view->buffer->data)+offset;
                     int texcoord0_num = texcoord_accessor->count;
                     int texcoord0_size = texcoord_accessor->buffer_view->size;
@@ -416,7 +416,7 @@ namespace wx {
                 }
 
                 if(indices_accessor){
-                    int offset = indices_accessor->buffer_view->offset;
+                    int offset = indices_accessor->offset + indices_accessor->buffer_view->offset;
                     void* indices_buffer = (uint8_t*)(indices_accessor->buffer_view->buffer->data)+offset;
                     int indices_num = indices_accessor->count;
                     int indices_size = indices_accessor->buffer_view->size;
@@ -432,7 +432,7 @@ namespace wx {
                 }
 
                 if(joints_accessor){
-                    int offset = joints_accessor->buffer_view->offset;
+                    int offset = joints_accessor->offset + joints_accessor->buffer_view->offset;
                     void* data_buffer = (uint8_t*)(joints_accessor->buffer_view->buffer->data)+offset;
                     int data_count = joints_accessor->count;
                     int data_stride = joints_accessor->stride;
@@ -495,7 +495,7 @@ namespace wx {
                 }
 
                 if(weights_accessor){
-                    int offset = weights_accessor->buffer_view->offset;
+                    int offset = weights_accessor->offset + weights_accessor->buffer_view->offset;
                     void* data_buffer = (uint8_t*)(weights_accessor->buffer_view->buffer->data)+offset;
                     int data_count = weights_accessor->count;
                     int data_stride = weights_accessor->stride;
@@ -552,7 +552,7 @@ namespace wx {
                     //upload joints
                     glGenBuffers(1,&vbo);
                     glBindBuffer(GL_ARRAY_BUFFER,vbo);
-                    glBufferData(GL_ARRAY_BUFFER,new_data_size,data.data(),GL_STATIC_DRAW);
+                    glBufferData(GL_ARRAY_BUFFER,byte_size,addr,GL_STATIC_DRAW);
                     glEnableVertexAttribArray(4);
                     glVertexAttribPointer(4,4,GL_FLOAT,GL_FALSE,16,nullptr);
                 }
@@ -963,7 +963,7 @@ namespace wx {
 /**
  * Debug
  */
-    struct Character{
+    struct UChar{
         bool cached=false;
         GLuint texture;
         ivec2 size;
@@ -1002,7 +1002,7 @@ namespace wx {
 
         wstring chars = text;
         for (auto it=chars.begin();it!=chars.end();++it) {
-            Character c = Font::GetChar(*it);
+            UChar c = Font::GetChar(*it);
             float x = pos.x+c.bearing.x*1.0f;
             float y = pos.y+Font::PIXEL_SIZE+float((c.size.y-c.bearing.y))*1.0f;
             auto w = float(c.size.x);

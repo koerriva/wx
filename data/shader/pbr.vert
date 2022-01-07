@@ -30,7 +30,7 @@ void main(){
         weight.z * JointMat[int(joint.z)] +
         weight.w * JointMat[int(joint.w)];
 
-        model = SkinMat*M;
+        model = SkinMat;
     }
 
     v_TexCoord = texcoord;
@@ -38,7 +38,7 @@ void main(){
     v_WorldPos = (model*vec4(position,1.0)).xyz;
 
     for(int i=0;i<5;i++){
-        v_LightWorldPos[i] = LightPV[i]*M*vec4(position,1.0);
+        v_LightWorldPos[i] = LightPV[i]*model*vec4(position,1.0);
     }
 
     gl_Position = P*V*model*vec4(position,1.0);
