@@ -6,62 +6,69 @@
 #include "log.h"
 #include "renderer.h"
 #include "font.h"
-
-GLenum glCheckError_(const char *file, int line)
-{
-    GLenum errorCode;
-    while ((errorCode = glGetError()) != GL_NO_ERROR)
-    {
-        std::string error;
-        switch (errorCode)
-        {
-            case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
-            case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
-            case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
-            case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
-            case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
-            case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
-            case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
-        }
-        std::cout << error << " | " << file << " (" << line << ")" << std::endl;
-        WX_CORE_CRITICAL("{} | {} ({})",error,file,line);
-        exit(-10002);
-    }
-    return errorCode;
-}
+#include "systems.h"
 
 namespace wx {
-    Renderer::Renderer(/* args */)
-    = default;
+    void camera_update_system(level* level,float delta){
+        auto* window = level_get_share_resource<Window>(level);
+        if(window== nullptr)return;
+        auto* matrix = level_get_share_resource<VPMatrices>(level);
+        if(matrix== nullptr)return;
 
-    Renderer::~Renderer()
-    {
-        std::cout << "Drop Renderer" << std::endl;
+        auto entities_iter = level->entities.begin();
+        auto entities_begin = level->entities.begin();
+        while (entities_iter != level->entities.end()){
+            uint32_t entity_idx = entities_iter-entities_begin;
+            entity_id entity = CREATE_ID((*entities_iter),entity_idx);
+            if(entity!=0 && level_has_components<Camera,MainCamera>(level,entity)){
+                auto * camera = level_get_component<Camera>(level,entity);
+                //计算观察矩阵
+                if(level_has_components<MainCamera>(level,entity)){
+                    matrix->view = lookAt(camera->position,camera->position+camera->front,camera->up);
+                    matrix->project = perspective(radians(60.f),window->GetAspect(),0.1f,1000.f);
+                }
+            }
+            entities_iter++;
+        }
     }
 
-    void Renderer::Init(){
-        glClearColor(0.f,0.f,0.f,1.0f);
-        glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
+    std::vector<::entity_id> models(1000);
+    std::vector<::entity_id> lights(1000);
+    std::vector<::entity_id> ui(100);
+
+    void render_update_system(level* level,float delta){
+        models.clear();
+        lights.clear();
+
+        auto entities_iter = level->entities.begin();
+        auto entities_begin = level->entities.begin();
+        while (entities_iter != level->entities.end()){
+            uint32_t entity_idx = entities_iter-entities_begin;
+            entity_id entity = CREATE_ID((*entities_iter),entity_idx);
+            if(entity!=0 && level_has_components<Light,CastShadow>(level,entity)){
+                lights.push_back(entity);
+            }
+            if(entity!=0 && level_has_components<Mesh,ReceiveShadow>(level,entity)){
+                models.push_back(entity);
+            }
+            if(entity!=0 && level_has_components<Canvas>(level,entity)){
+                ui.push_back(entity);
+            }
+            entities_iter++;
+        }
+
+        render_shadow_phase_system(level,delta,models,lights);
+        render_mesh_phase_system(level,delta,models,lights);
+        render_ui_phase_system(level,delta,ui);
+
+        auto* frameState = level_get_share_resource<FrameState>(level);
+        frameState->delta_time = delta;
+        frameState->total_time += delta;
+        frameState->total_count += 1;
     }
 
-    void Renderer::SetWireframeMode(){
-        WIREFRAME_MODE = true;
-        SHADER_MODE = false;
-    }
-
-    void Renderer::SetShaderMode() {
-        WIREFRAME_MODE = false;
-        SHADER_MODE = true;
-    }
-
-    void Renderer::SetToLightView(light_t* light) {
-        this->view_light = light;
-        this->is_light_view = light != nullptr;
-    }
-
-    glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
-    void Renderer::Render(const Window *window, vector<model_t>& models, vector<light_t>& lights,float delta) {
-
+    void render_shadow_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights){
+        glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
         auto right_left_face_view = [](vec3 position,float dir)->mat4 {
             return lookAt(position, position + vec3(dir,0.0,0.0), vec3(0.0,-1.0,0.0));
         };
@@ -72,60 +79,66 @@ namespace wx {
             return lookAt(position, position + vec3(0.0,0.0,dir), vec3(0.0,-1.0,0.0));
         };
 
-        for (auto & light:lights) {
-            if(!light.has_shadow_map){
+        for (auto & light_entity:lights) {
+            auto* light = level_get_component<Light>(level,light_entity);
+
+            if(!light->has_shadow_map){
                 continue;
             }
-            glViewport(0, 0, light.shadow_map.width, light.shadow_map.height);
-            glBindFramebuffer(GL_FRAMEBUFFER, light.shadow_map.fbo);
+            glViewport(0, 0, light->shadow_map.width, light->shadow_map.height);
+            glBindFramebuffer(GL_FRAMEBUFFER, light->shadow_map.fbo);
             glClear(GL_DEPTH_BUFFER_BIT);
             glEnable(GL_DEPTH_TEST);
 //            glEnable(GL_CULL_FACE);
 //            glCullFace(GL_BACK);
 //            glCullFace(GL_FRONT);
 
-            uint32_t shaderProgram = light.shadow_map.shader;
+            uint32_t shaderProgram = light->shadow_map.shader;
             ShaderProgram::Bind(shaderProgram);
 
-            if(light.type==point){
-                shadowCubeTransforms[0] = light.p * right_left_face_view(light.position,1.0);//right
-                shadowCubeTransforms[1] = light.p * right_left_face_view(light.position,-1.0f);//left
-                shadowCubeTransforms[2] = light.p * up_down_face_view(light.position,1.0);//up
-                shadowCubeTransforms[3] = light.p * up_down_face_view(light.position,-1.0);//down
-                shadowCubeTransforms[4] = light.p * near_far_face_view(light.position,1.0);//near
-                shadowCubeTransforms[5] = light.p * near_far_face_view(light.position,-1.0);//far
+            if(light->type==Light::point){
+                shadowCubeTransforms[0] = light->p * right_left_face_view(light->position,1.0);//right
+                shadowCubeTransforms[1] = light->p * right_left_face_view(light->position,-1.0f);//left
+                shadowCubeTransforms[2] = light->p * up_down_face_view(light->position,1.0);//up
+                shadowCubeTransforms[3] = light->p * up_down_face_view(light->position,-1.0);//down
+                shadowCubeTransforms[4] = light->p * near_far_face_view(light->position,1.0);//near
+                shadowCubeTransforms[5] = light->p * near_far_face_view(light->position,-1.0);//far
 
                 for (int i = 0; i < 6; ++i) {
                     ShaderProgram::SetMat4(shaderProgram,"shadowMatrices["+ to_string(i)+"]", value_ptr(shadowCubeTransforms[i]));
                 }
-                ShaderProgram::SetVec3(shaderProgram,"lightPos", value_ptr(light.position));
-                ShaderProgram::SetFloat(shaderProgram,"far_plane",light.far_plane);
+                ShaderProgram::SetVec3(shaderProgram,"lightPos", value_ptr(light->position));
+                ShaderProgram::SetFloat(shaderProgram,"far_plane",light->far_plane);
             }
 
-            if(light.type==spot||light.type==directional){
-                mat4 pv = light.p * light.v;
+            if(light->type==Light::spot||light->type==Light::directional){
+                mat4 pv = light->p * light->v;
                 ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
             }
 
             for (auto& model:models) {
-                mat4 M = translate(mat4{1},model.transform.position)
-                         * rotate(mat4{1},model.transform.rotation.x,vec3{1.,0.,0.})
-                         * rotate(mat4{1},model.transform.rotation.y,vec3{0.,1.,0.})
-                         * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
-                         * scale(mat4{1},model.transform.scale);
+                Transform * transform = level_get_component<Transform>(level,model);
+                Mesh* mesh= level_get_component<Mesh>(level,model);
+                mat4 M = transform->GetGlobalTransform();
 
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-                ShaderProgram::SetInt(shaderProgram,"use_skin",model.has_skin);
-                if(model.has_skin==1){
-                    for (int i = 0; i < model.skin.bind_mat_count; ++i) {
-                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(model.skin.bind_mat[i]));
+                ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
+                if(mesh->has_skin==1){
+                    for (int i = 0; i < mesh->skin->joints_count; ++i) {
+                        mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
+                        mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
+                        joint_matrices = joint_matrices * inverse_matrices;
+                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                     }
                 }
 
-                for (int i = 0; i < model.mesh_count; ++i) {
-                    mesh_t& mesh = model.meshes[i];
-                    glBindVertexArray(mesh.vao);
-                    glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
+                for (auto& primitive:mesh->primitives) {
+                    glBindVertexArray(primitive.vao);
+                    if(primitive.indices_count==0){
+                        glDrawArrays(GL_TRIANGLES,0,primitive.vertices_count);
+                    }else{
+                        glDrawElements(GL_TRIANGLES,primitive.indices_count,primitive.indices_type,nullptr);
+                    }
                     glBindVertexArray(0);
                 }
             }
@@ -138,35 +151,25 @@ namespace wx {
         }
     }
 
-    void Renderer::Render(const Window *window, const Camera *camera, vector<model_t>& models, vector<light_t>& lights,canvas_t canvas, float delta) {
+    void render_mesh_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,entity_id camera){
+        auto window = level_get_share_resource<Window>(level);
+        auto vp = level_get_share_resource<VPMatrices>(level);
+        auto pbrShader = level_get_share_resource<PBRShader>(level);
+        auto* frameState = level_get_share_resource<FrameState>(level);
+
         glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-        if(WIREFRAME_MODE){
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        }
-        if(SHADER_MODE){
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        }
 
-        float aspect = window->GetAspect();
-        glm::mat4 P(1.0f),V(1.0f),M(1.0f);
-        P = glm::perspective(glm::radians(60.f),aspect,.1f,1000.f);
-        V = camera->GetViewMatrix();
+        mat4 P = vp->project;
+        mat4 V = vp->view;
 
-        if(is_light_view){
-            P = view_light->p;
-            V = view_light->v;
-        }
+        for (auto& model_entity:models) {
+            Transform * transform = level_get_component<Transform>(level,model_entity);
+            Mesh* mesh= level_get_component<Mesh>(level,model_entity);
+            mat4 M = transform->GetGlobalTransform();
 
-        for (auto& model:models) {
-            M = translate(mat4{1},model.transform.position)
-                    * rotate(mat4{1},model.transform.rotation.x,vec3{1.,0.,0.})
-                    * rotate(mat4{1},model.transform.rotation.y,vec3{0.,1.,0.})
-                    * rotate(mat4{1},model.transform.rotation.z,vec3{0.,0.,1.})
-                    * scale(mat4{1},model.transform.scale);
-
-            uint32_t shaderProgram = model.material.program_id;
+            uint32_t shaderProgram = pbrShader->id;
             ShaderProgram::Bind(shaderProgram);
             ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
             ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
@@ -178,28 +181,27 @@ namespace wx {
 
             int cube_map_index = 0;
             int map_index = 0;
-            for (auto & light : lights) {
-                if(light.has_shadow_map){
-                    if(light.type==point){
+            for (auto & light_entity : lights) {
+                auto* light = level_get_component<Light>(level,light_entity);
+                if(light->has_shadow_map){
+                    if(light->type==Light::point){
                         int index = 2+5+cube_map_index;
-                        glBindTextureUnit(index,light.shadow_map.texture);
-                        light.shadow_map_index = cube_map_index;
+                        glBindTextureUnit(index,light->shadow_map.texture);
+                        light->shadow_map_index = cube_map_index;
                         cube_map_index++;
                     }
-                    if(light.type==directional||light.type==spot){
+                    if(light->type==Light::directional||light->type==Light::spot){
                         int index = 2+map_index;
-                        glBindTextureUnit(index,light.shadow_map.texture);
-                        light.shadow_map_index = map_index;
-                        mat4 pv = light.p * light.v;
+                        glBindTextureUnit(index,light->shadow_map.texture);
+                        light->shadow_map_index = map_index;
+                        mat4 pv = light->p * light->v;
                         ShaderProgram::SetMat4(shaderProgram, "LightPV["+ to_string(map_index)+"]", value_ptr(pv));
                         map_index++;
                     }
                 }
             }
 
-            for (int i = 0; i < model.mesh_count; ++i) {
-                mesh_t& mesh = model.meshes[i];
-                material_instance_t& mat = mesh.materials[0];
+            for (auto& primitive:mesh->primitives) {
 //
 //                glActiveTexture(GL_TEXTURE0);
 //                glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
@@ -208,6 +210,7 @@ namespace wx {
 //                glActiveTexture(GL_TEXTURE0+2);
 //                glBindTexture(GL_TEXTURE_2D,lights[0].shadow_map.texture);
 
+                material_t mat = primitive.materials[0];
                 if(mat.has_albedo_texture){
                     glBindTextureUnit(0,mat.albedo_texture);
                 }
@@ -216,18 +219,21 @@ namespace wx {
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
                 }
 
-                ShaderProgram::SetInt(shaderProgram,"use_skin",model.has_skin);
-                if(model.has_skin==1){
-                    for (int j = 0; j < model.skin.bind_mat_count; ++j) {
-                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(j) + "]", value_ptr(model.skin.bind_mat[j]));
+                ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
+                if(mesh->has_skin==1){
+                    for (int i = 0; i < mesh->skin->joints_count; ++i) {
+                        mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
+                        mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
+                        joint_matrices = joint_matrices * inverse_matrices;
+                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                     }
                 }
 
                 ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
                 ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-                ShaderProgram::SetFloat(shaderProgram,"time",frame_time);
-                vec3 camPos = camera->Position();
+                ShaderProgram::SetFloat(shaderProgram,"time",frameState->total_time);
+                vec3 camPos = level_get_component<Camera>(level,camera)->position;
                 ShaderProgram::SetVec3(shaderProgram,"cameraPos", value_ptr(camPos));
 
                 ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
@@ -241,36 +247,48 @@ namespace wx {
                 ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
                 ShaderProgram::SetLight(shaderProgram,"lights",lights);
 
-                glBindVertexArray(mesh.vao);
-                glDrawElements(GL_TRIANGLES,mesh.indices_count,mesh.indices_type,nullptr);
+                glBindVertexArray(primitive.vao);
+                if(primitive.indices_count==0){
+                    glDrawArrays(GL_TRIANGLES,0,primitive.vertices_count);
+                }else{
+                    glDrawElements(GL_TRIANGLES,primitive.indices_count,primitive.indices_type,nullptr);
+                }
                 glBindVertexArray(0);
-
             }
 
             ShaderProgram::Unbind();
         }
+    }
 
-//        glEnable(GL_BLEND);
-//        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    void render_ui_phase_system(level* level,float delta,vector<::entity_id> items){
+        auto window = level_get_share_resource<Window>(level);
+        auto flatShader = level_get_share_resource<FlatShader>(level);
 
-        ShaderProgram::Bind(canvas.shader);
-        mat4 uP = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        ShaderProgram::Bind(flatShader->id);
+        mat4 P = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
         vec3 color = {1.0,1.0,1.0};
-        mat4 uM{1.0f};
-        uM = translate(uM,vec3(canvas.position,0.0f));
-        uM = scale(uM,vec3(canvas.size,0.0f));
-        ShaderProgram::SetVec3(canvas.shader,"color", value_ptr(color));
-        ShaderProgram::SetMat4(canvas.shader,"P", value_ptr(uP));
-        ShaderProgram::SetMat4(canvas.shader,"M", value_ptr(uM));
-        ShaderProgram::SetInt(canvas.shader,"texture0",0);
+        mat4 M{1.0f};
+
+        for (auto item_entity:items) {
+            auto canvas = level_get_component<Canvas>(level,item_entity);
+
+            M = translate(M,vec3(canvas->position,0.0f));
+            M = scale(M,vec3(canvas->size,0.0f));
+            ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
+            ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
+            ShaderProgram::SetMat4(flatShader->id,"M", value_ptr(M));
+            ShaderProgram::SetInt(flatShader->id,"texture0",0);
 //        glActiveTexture(GL_TEXTURE0);
-        glBindTextureUnit(0,canvas.texture);
-        glBindVertexArray(canvas.vao);
-        glDrawArrays(GL_TRIANGLES,0,6);
-        glBindVertexArray(0);
+            glBindTextureUnit(0,canvas->texture);
+            glBindVertexArray(canvas->vao);
+            glDrawArrays(GL_TRIANGLES,0,6);
+            glBindVertexArray(0);
+        }
         ShaderProgram::Unbind();
 
-        this->frame_time += delta;
-        this->frame_count++;
+        glDisable(GL_BLEND);
     }
 }

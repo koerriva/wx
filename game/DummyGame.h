@@ -27,8 +27,8 @@ namespace wx {
         Renderer* renderer;
         Camera* camera = nullptr;
         Debug* debug = nullptr;
-        vector<Mesh> meshList;
-        vector<Texture> textures;
+        vector<MeshLoader> meshList;
+        vector<TextureLoader> textures;
         Timer* timer;
         Terrain* terrain;
         ShaderProgram baseShader;

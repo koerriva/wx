@@ -8,24 +8,10 @@
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include <string>
+#include <glm/vec2.hpp>
 
 namespace wx {
     using namespace std;
-
-    enum KeyCode {
-        ESC = GLFW_KEY_ESCAPE,ENTER,TAB,
-        RIGHT=GLFW_KEY_RIGHT,LEFT,DOWN,UP,
-        F1 = GLFW_KEY_F1,
-        F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12,
-        Num0 = GLFW_KEY_0,Num1,Num2,Num3,Num4,Num5,Num6,Num7,Num8,Num9,
-        A=GLFW_KEY_A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
-    };
-
-    enum MouseCode {
-        M_LEFT = GLFW_MOUSE_BUTTON_LEFT,
-        M_MID = GLFW_MOUSE_BUTTON_MIDDLE,
-        M_RIGHT = GLFW_MOUSE_BUTTON_RIGHT
-    };
 
     class Window
     {
@@ -43,8 +29,7 @@ namespace wx {
 
         double mLastX = width/2,mLastY = height/2,mXOffset,mYOffset;
 
-        int last_key_state[GLFW_KEY_LAST+1] = {0};
-        int curr_key_state[GLFW_KEY_LAST+1] = {0};
+
 
     public:
         Window(string title,int width,int height,bool vsync);
@@ -79,9 +64,9 @@ namespace wx {
 
         void Cleanup();
 
-        //Input
-        [[nodiscard]] bool GetKeyPressed(int key) const;
-        bool GetKeyDown(int key) const;
+        int GetKeyState(int key);
+        int GetMouseState(int btn);
+        void GetCursorPos(double * x,double * y);
 
         [[nodiscard]] int GetWidth() const {
             return width;
@@ -117,11 +102,6 @@ namespace wx {
 
         [[nodiscard]] double GetMouseYOffset() const{
             return mYOffset;
-        }
-
-        [[nodiscard]] bool GetMouseButtonPressed(int btn) const{
-            int state = glfwGetMouseButton(glfwWindow,btn);
-            return state==GLFW_PRESS;
         }
     };
 }

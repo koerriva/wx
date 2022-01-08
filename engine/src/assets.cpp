@@ -79,13 +79,13 @@ namespace wx {
     const unsigned char *AssetsLoader::loadTexture(const char *name, int *len) {
         string filepath = string(root).append(FILE_SPLITER).append("textures").append(FILE_SPLITER).append(name);
         path dir(filepath);
-        WX_CORE_INFO("Find Texture {}",dir.string());
+        WX_CORE_INFO("Find TextureLoader {}",dir.string());
 
         if(data.count(filepath)>0){
             *len = data[filepath].size();
             return data[filepath].data();
         }else{
-            WX_CORE_ERROR("Can't Find Texture {}",dir.string());
+            WX_CORE_ERROR("Can't Find TextureLoader {}",dir.string());
             return nullptr;
         }
     }

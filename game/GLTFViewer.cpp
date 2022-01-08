@@ -17,27 +17,27 @@ namespace wx {
     void GLTFViewer::Init(Window *window) {
         WX_INFO("GLFTViewer Init");
         renderer->Init();
-//        auto Plane = Mesh::LoadModelFromGLTF("model\\Plane.glb")[0];
+//        auto Plane = MeshLoader::LoadModelFromGLTF("model\\Plane.glb")[0];
 //        Plane.transform.scale += vec3(100);
 //        this->models.push_back(Plane);
 
-        auto Snake = Mesh::LoadModelFromGLTF("model\\Snake.gltf");
+        auto Snake = MeshLoader::LoadModelFromGLTF("model\\Snake.gltf");
         for (auto& m:Snake) {
             this->models.push_back(m);
         }
 
-//        auto Scene = Mesh::LoadModelFromGLTF("model\\Scene.gltf");
+//        auto Scene = MeshLoader::LoadModelFromGLTF("model\\Scene.gltf");
 //        for (auto& m:Scene) {
 //            this->models.push_back(m);
 //        }
 
-//        auto FlySets = Mesh::LoadModelFromGLTF("model\\CesiumDrone.glb");
+//        auto FlySets = MeshLoader::LoadModelFromGLTF("model\\CesiumDrone.glb");
 //        for (auto& f:FlySets) {
 //            f.transform.position += vec3(4);
 //            this->models.push_back(f);
 //        }
 
-//        auto Sphere = Mesh::LoadModelFromGLTF("model\\Sphere.gltf")[0];
+//        auto Sphere = MeshLoader::LoadModelFromGLTF("model\\Sphere.gltf")[0];
 //        Sphere.transform.position += vec3(-5,5,0);
 //        this->models.push_back(Sphere);
 //        model_t pointLightModel = Sphere;
@@ -47,7 +47,7 @@ namespace wx {
 //        spotLightModel.transform.position = vec3(0,10,0);
 //        this->models.push_back(spotLightModel);
 
-//        auto arm = Mesh::LoadModelFromGLTF("model\\arm_skin.gltf")[0];
+//        auto arm = MeshLoader::LoadModelFromGLTF("model\\arm_skin.gltf")[0];
 //        arm.transform.scale += vec3(10);
 //        this->models.push_back(arm);
 
@@ -68,7 +68,7 @@ namespace wx {
         dirLight.color = vec3{1.0f};
         dirLight.direction = vec3{0,-1,1};
         dirLight.intensity = 100;
-        dirLight.shadow_map = Texture::LoadDepthMap(2048,2048);
+        dirLight.shadow_map = TextureLoader::LoadDepthMap(2048, 2048);
         dirLight.shadow_map.shader = depth_shader;
         dirLight.has_shadow_map = 1;
         dirLight.near_plane = -20.f;
@@ -84,7 +84,7 @@ namespace wx {
         pointLight.position = vec3{0.f,6.0,0.0};
         pointLight.intensity = 50;
         pointLight.attenuation = {0.0,0.0,0.12};
-        pointLight.shadow_map = Texture::LoadDepthCubeMap(2048,2048);
+        pointLight.shadow_map = TextureLoader::LoadDepthCubeMap(2048, 2048);
         pointLight.shadow_map.shader = depth_cube_shader;
         pointLight.has_shadow_map = 1;
         pointLight.near_plane = 1.f;
@@ -99,7 +99,7 @@ namespace wx {
         spotLight.direction = vec3{0.f,-1.f,0.};
         spotLight.cutoff = glm::cos(radians(45.0f));
         spotLight.intensity = 20;
-        spotLight.shadow_map = Texture::LoadDepthMap(2048,2048);
+        spotLight.shadow_map = TextureLoader::LoadDepthMap(2048, 2048);
         spotLight.shadow_map.shader = depth_shader;
         spotLight.has_shadow_map = 1;
         spotLight.near_plane = 1.f;
@@ -110,7 +110,7 @@ namespace wx {
 
         light_t canvas_light = spotLight;
         canvas.shader = ShaderProgram::LoadShader("hud_debug_depth");
-        canvas.vao = Mesh::UnitQuad();
+        canvas.vao = MeshLoader::UnitQuad();
         canvas.texture = canvas_light.shadow_map.texture;
         ShaderProgram::Bind(canvas.shader);
         ShaderProgram::SetInt(canvas.shader,"type",canvas_light.type);
@@ -151,35 +151,6 @@ namespace wx {
                 renderer->SetToLightView(&lights[0]);
             }else{
                 renderer->SetToLightView(nullptr);
-            }
-        }
-
-        cameraState.x = 0.f;
-        cameraState.y = 0.f;
-        if(window->GetKeyDown(KeyCode::W)){
-            cameraState.x = 1.f;
-        }
-        if(window->GetKeyDown(KeyCode::S)){
-            cameraState.x = -1.f;
-        }
-        if(window->GetKeyDown(KeyCode::D)){
-            cameraState.y = 1.f;
-        }
-        if(window->GetKeyDown(KeyCode::A)){
-            cameraState.y = -1.f;
-        }
-
-        cameraDirection.x = 0;
-        cameraDirection.y = 0;
-        if(window->GetMouseButtonPressed(M_RIGHT)){
-            window->ShowCursor(false);
-            hideCursor = true;
-            cameraDirection.x = -static_cast<float>(window->GetMouseXOffset());
-            cameraDirection.y = -static_cast<float>(window->GetMouseYOffset());
-        }else{
-            if(hideCursor){
-                hideCursor= false;
-                window->ShowCursor(true);
             }
         }
     }

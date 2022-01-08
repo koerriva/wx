@@ -133,6 +133,25 @@ namespace wx {
         void (*destroy_function)(T *);
     };
 
+    class ShareResourceBase {};
+
+    template<typename T>
+    class ShareResource : public ShareResourceBase{
+    private:
+        std::atomic<T> value;
+    public:
+        explicit ShareResource(T _value):value(_value){};
+
+        T* Get(){
+            return value.load();
+        }
+
+        T* Set(T newValue){
+            value.store(newValue);
+            return value.load();
+        }
+    };
+
     typedef struct level _level;
 
     typedef void(*system_t)(_level *level, float delta_time);
@@ -145,6 +164,8 @@ namespace wx {
         //entities
         std::vector<uint8_t> entities = {0};
         std::queue<uint32_t> empty_entities_spots;
+        //share obj
+        std::unordered_map<std::string, ShareResourceBase *> resources;
     };
 
     level *level_create();
@@ -154,6 +175,8 @@ namespace wx {
     void level_register_system(level * level, system_t system_update, const char *system_name);
 
     void level_unregister_system(level * level, const char *system_name);
+
+    void level_register_share_resource(level * level,ShareResourceBase* value);
 
     template<typename T>
     void level_register_component(level * level) {
@@ -221,6 +244,24 @@ namespace wx {
         }
 
         return true;
+    }
+
+    template<typename T>
+    void level_insert_share_resource(level* level,T value){
+        std::string type_name = typeid(T).name();
+        if (level->resources.find(type_name) != level->resources.end()) {
+            return;
+        }
+
+        auto *new_share_resource = new Component<T>();
+        ShareResourceBase * shareResourceBase = new_share_resource;
+        level->resources.insert({type_name, shareResourceBase});
+    }
+
+    template<typename T>
+    T* level_get_share_resource(level* level){
+        std::string type_name = typeid(T).name();
+        return level->resources[type_name];
     }
 }
 #endif //WX_ECS_H

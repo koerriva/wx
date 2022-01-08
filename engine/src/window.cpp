@@ -77,35 +77,23 @@ namespace wx {
     void Window::Update(){
         closed = glfwWindowShouldClose(glfwWindow)==1;
 //        glfwGetWindowSize(glfwWindow,&width,&height);
-        double mX,mY;
-        glfwGetCursorPos(glfwWindow,&mX,&mY);
-        mXOffset = mX - mLastX;
-        mYOffset = mLastY - mY;
-        mLastX = mX;
-        mLastY = mY;
-        float sensitivity = 0.05f;
-        mXOffset *= sensitivity;
-        mYOffset *= sensitivity;
-
         glfwSwapBuffers(glfwWindow);
         glfwPollEvents();
-
-        for (int i = 0; i < GLFW_KEY_LAST + 1; ++i) {
-            int key_state = glfwGetKey(glfwWindow,i);
-            last_key_state[i] = curr_key_state[i];
-            curr_key_state[i] = key_state;
-        }
     }
 
     void Window::Cleanup(){
         glfwTerminate();
     }
 
-    bool Window::GetKeyPressed(int key) const{
-        return last_key_state[key]==GLFW_PRESS&&curr_key_state[key]==GLFW_RELEASE;
+    int Window::GetKeyState(int key) {
+        return glfwGetKey(glfwWindow,key);
     }
 
-    bool Window::GetKeyDown(int key) const {
-        return curr_key_state[key]==GLFW_PRESS;
+    int Window::GetMouseState(int btn){
+        return glfwGetMouseButton(glfwWindow,btn);
+    }
+
+    void Window::GetCursorPos(double * x,double * y){
+        glfwGetCursorPos(glfwWindow,x,y);
     }
 }

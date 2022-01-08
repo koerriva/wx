@@ -21,11 +21,11 @@ namespace wx {
         renderer->Init();
 
         this->baseShader = ShaderProgram::LoadShader("base");
-        meshList.push_back(Mesh::Sphere(EARTH_RADIUS,72,36));
+        meshList.push_back(MeshLoader::Sphere(EARTH_RADIUS, 72, 36));
 
         int len;
         const unsigned char* buffer = AssetsLoader::LoadTexture("earthmap4k.jpg",&len);
-        auto tex = Texture(buffer,len);
+        auto tex = TextureLoader(buffer, len);
         textures.push_back(tex);
 
 
