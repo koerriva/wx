@@ -164,51 +164,64 @@ namespace wx {
         mat4 P = vp->project;
         mat4 V = vp->view;
 
+
+        uint32_t shaderProgram = pbrShader->id;
+        ShaderProgram::Bind(shaderProgram);
+        ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+        ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+        ShaderProgram::SetFloat(shaderProgram,"time",frameState->total_time);
+        vec3 camPos = level_get_component<Camera>(level,camera)->position;
+        ShaderProgram::SetVec3(shaderProgram,"cameraPos", value_ptr(camPos));
+
+        ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
+        ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
+
+        ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
+        ShaderProgram::SetLight(shaderProgram,"lights",lights);
+
+        for (int i = 0; i < 5; ++i) {
+            ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",2+i);
+            ShaderProgram::SetInt(shaderProgram,"shadowCubeMap["+ to_string(i)+"]",2+5+i);
+        }
+
+        int cube_map_index = 0;
+        int map_index = 0;
+        for (auto & light_entity : lights) {
+            auto* light = level_get_component<Light>(level,light_entity);
+            if(light->has_shadow_map){
+                if(light->type==Light::point){
+                    int index = 2+5+cube_map_index;
+                    glBindTextureUnit(index,light->shadow_map.texture);
+                    light->shadow_map_index = cube_map_index;
+                    cube_map_index++;
+                }
+                if(light->type==Light::directional||light->type==Light::spot){
+                    int index = 2+map_index;
+                    glBindTextureUnit(index,light->shadow_map.texture);
+                    light->shadow_map_index = map_index;
+                    mat4 pv = light->p * light->v;
+                    ShaderProgram::SetMat4(shaderProgram, "LightPV["+ to_string(map_index)+"]", value_ptr(pv));
+                    map_index++;
+                }
+            }
+        }
+
         for (auto& model_entity:models) {
             Transform * transform = level_get_component<Transform>(level,model_entity);
             Mesh* mesh= level_get_component<Mesh>(level,model_entity);
             mat4 M = transform->GetGlobalTransform();
-
-            uint32_t shaderProgram = pbrShader->id;
-            ShaderProgram::Bind(shaderProgram);
-            ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
-            ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
-
-            for (int i = 0; i < 5; ++i) {
-                ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",2+i);
-                ShaderProgram::SetInt(shaderProgram,"shadowCubeMap["+ to_string(i)+"]",2+5+i);
-            }
-
-            int cube_map_index = 0;
-            int map_index = 0;
-            for (auto & light_entity : lights) {
-                auto* light = level_get_component<Light>(level,light_entity);
-                if(light->has_shadow_map){
-                    if(light->type==Light::point){
-                        int index = 2+5+cube_map_index;
-                        glBindTextureUnit(index,light->shadow_map.texture);
-                        light->shadow_map_index = cube_map_index;
-                        cube_map_index++;
-                    }
-                    if(light->type==Light::directional||light->type==Light::spot){
-                        int index = 2+map_index;
-                        glBindTextureUnit(index,light->shadow_map.texture);
-                        light->shadow_map_index = map_index;
-                        mat4 pv = light->p * light->v;
-                        ShaderProgram::SetMat4(shaderProgram, "LightPV["+ to_string(map_index)+"]", value_ptr(pv));
-                        map_index++;
-                    }
+            ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+            ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
+            if(mesh->has_skin==1){
+                for (int i = 0; i < mesh->skin->joints_count; ++i) {
+                    mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
+                    mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
+                    joint_matrices = joint_matrices * inverse_matrices;
+                    ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                 }
             }
 
             for (auto& primitive:mesh->primitives) {
-//
-//                glActiveTexture(GL_TEXTURE0);
-//                glBindTexture(GL_TEXTURE_2D,mat.albedo_texture);
-//                glActiveTexture(GL_TEXTURE0+1);
-//                glBindTexture(GL_TEXTURE_2D,mat.metallic_roughness_texture);
-//                glActiveTexture(GL_TEXTURE0+2);
-//                glBindTexture(GL_TEXTURE_2D,lights[0].shadow_map.texture);
 
                 material_t mat = primitive.materials[0];
                 if(mat.has_albedo_texture){
@@ -219,23 +232,6 @@ namespace wx {
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
                 }
 
-                ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
-                if(mesh->has_skin==1){
-                    for (int i = 0; i < mesh->skin->joints_count; ++i) {
-                        mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
-                        mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
-                        joint_matrices = joint_matrices * inverse_matrices;
-                        ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
-                    }
-                }
-
-                ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
-                ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
-                ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-                ShaderProgram::SetFloat(shaderProgram,"time",frameState->total_time);
-                vec3 camPos = level_get_component<Camera>(level,camera)->position;
-                ShaderProgram::SetVec3(shaderProgram,"cameraPos", value_ptr(camPos));
-
                 ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
                 ShaderProgram::SetInt(shaderProgram,"has_albedo_texture",mat.has_albedo_texture);
 
@@ -243,9 +239,6 @@ namespace wx {
                 ShaderProgram::SetFloat(shaderProgram, "roughness", mat.roughness);
                 ShaderProgram::SetFloat(shaderProgram,"ao",mat.ao);
                 ShaderProgram::SetInt(shaderProgram,"has_metallic_roughness_texture",mat.has_metallic_roughness_texture);
-
-                ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
-                ShaderProgram::SetLight(shaderProgram,"lights",lights);
 
                 glBindVertexArray(primitive.vao);
                 if(primitive.indices_count==0){
@@ -271,14 +264,13 @@ namespace wx {
         mat4 P = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
         vec3 color = {1.0,1.0,1.0};
         mat4 M{1.0f};
-
+        ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
+        ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
         for (auto item_entity:items) {
             auto canvas = level_get_component<Canvas>(level,item_entity);
 
             M = translate(M,vec3(canvas->position,0.0f));
             M = scale(M,vec3(canvas->size,0.0f));
-            ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
-            ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
             ShaderProgram::SetMat4(flatShader->id,"M", value_ptr(M));
             ShaderProgram::SetInt(flatShader->id,"texture0",0);
 //        glActiveTexture(GL_TEXTURE0);
