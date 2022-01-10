@@ -11,24 +11,23 @@
 #define TINYGLTF_USE_CPP14
 #define TINYGLTF_USE_RAPIDJSON
 #define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "tiny_gltf.h"
 
 namespace wx {
-    Mesh trav_get_model(scene_t* scene,tinygltf::Model* cmodel,object_t* node,int mesh_idx,model_t* model,std::unordered_map<int,object_t*>& nodes);
-    skeleton_t* trav_get_skin(scene_t* scene,tinygltf::Model* cmodel,object_t* node,int skin_idx,skeleton_t* skeleton,std::unordered_map<int,object_t*>& nodes);
-    ::entity_id trav_get_node(scene_t* scene,tinygltf::Model* cmodel,object_t* parent,int node_idx,std::unordered_map<int,object_t*>& nodes);
+    Mesh* get_model_component(level* scene,tinygltf::Model* cmodel,::entity_id entity,int mesh_idx);
+    Skin* get_skin_component(level* scene,tinygltf::Model* cmodel,::entity_id entity,int skin_idx,std::unordered_map<int,::entity_id>& nodes);
+    ::entity_id get_node(level* scene,tinygltf::Model* cmodel,::entity_id parent,int node_idx,std::unordered_map<int,::entity_id>& nodes);
 
-    Mesh trav_get_model(scene_t* scene,tinygltf::Model* cmodel,object_t* node,int mesh_idx,model_t* model,std::unordered_map<int,object_t*>& nodes){
+    Mesh* get_model_component(level* scene,tinygltf::Model* cmodel,::entity_id entity,int mesh_idx){
         using namespace tinygltf;
-        //load mesh
-        Mesh* cmesh = &cmodel->meshes[mesh_idx];
-        std::cout << "Mesh : " << cmesh->name << std::endl;
+        tinygltf::Mesh& cmesh = cmodel->meshes[mesh_idx];
+        std::cout << "Mesh : " << cmesh.name << std::endl;
 
-        model->mesh_count = 0;
-        for (auto& primitive:cmesh->primitives) {
-            mesh_t& mesh = model->meshes[model->mesh_count++];
+        auto model = level_add_component(scene,entity,Mesh{});
+        model->name = cmesh.name;
+
+        for (auto& primitive:cmesh.primitives) {
+            Mesh::primitive_t mesh;
             std::cout << "Upload Primitive " << std::endl;
 
             glGenVertexArrays(1,&mesh.vao);
@@ -206,12 +205,12 @@ namespace wx {
 
             glBindVertexArray(0);
 
-            mesh.material.baseColor = vec4(1.0f);
+            mesh.material.albedo = vec4(1.0f);
             if(primitive.material>-1){
                 Material* cmat = &cmodel->materials[primitive.material];
                 TextureInfo baseColorTextureInfo = cmat->pbrMetallicRoughness.baseColorTexture;
                 if(baseColorTextureInfo.index>-1){
-                    mesh.material.hasBaseColorTexture = 1;
+                    mesh.material.has_albedo_texture = 1;
                     Texture* baseColorTexture = &cmodel->textures[baseColorTextureInfo.index];
                     Sampler* sampler = &cmodel->samplers[baseColorTexture->sampler];
                     Image* image = &cmodel->images[baseColorTexture->source];
@@ -224,20 +223,24 @@ namespace wx {
                     int warp_s = sampler->wrapS;
                     int warp_t = sampler->wrapT;
 
-                    mesh.material.baseColorTexture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                    mesh.material.albedo_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
                 }
 
-                mesh.material.baseColor = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
+                mesh.material.albedo = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
             }
         }
+
         return model;
     }
 
-    skeleton_t* trav_get_skin(scene_t* scene,tinygltf::Model* cmodel,object_t * parent,int skin_idx,skeleton_t* skeleton,std::unordered_map<int,object_t*>& nodes){
+    Skin* get_skin_component(level* scene,tinygltf::Model* cmodel,::entity_id entity,int skin_idx,std::unordered_map<int,::entity_id>& nodes){
         using namespace tinygltf;
-        Skin& cskin = cmodel->skins[skin_idx];
+        tinygltf::Skin& cskin = cmodel->skins[skin_idx];
 
         std::cout << "Skin : " << cskin.name << std::endl;
+
+        auto skeleton= level_add_component(scene,entity,Skin{});
+        skeleton->name = cskin.name;
 
         for (int i = 0; i < cskin.joints.size(); ++i) {
             skeleton->inverse_bind_matrices[i] = mat4(1.0f);
@@ -245,20 +248,21 @@ namespace wx {
 
         skeleton->joints_count = 0;
         for (auto& cjoint_id:cskin.joints) {
-            object_t * node = nodes[cjoint_id];
-            node->jointed = 1;
+            auto joint_entity = nodes[cjoint_id];
 
-            if(strcmp(node->name,"")==0){
-                memset(node->name,'\0',sizeof(node->name));
-                strcpy(node->name,("jointNode:"+std::to_string(cjoint_id)).c_str());
+            auto joint_spatial = level_get_component<Spatial3d>(scene,joint_entity);
+            auto joint = level_add_component(scene,joint_entity,Joint{});
+
+            if(joint_spatial->name.empty()){
+                joint_spatial->name = "jointNode:"+std::to_string(cjoint_id);
             }
 
-            if(node == nullptr){
-                std::cerr << "load skeleton error" << std::endl;
+            if(joint == nullptr){
+                WX_CORE_CRITICAL("load skeleton error");
                 exit(-1001);
             }
 
-            skeleton->joints[skeleton->joints_count++] = node;
+            skeleton->joints[skeleton->joints_count++] = joint_entity;
         }
 
         Accessor * accessor = &cmodel->accessors[cskin.inverseBindMatrices];
@@ -272,69 +276,59 @@ namespace wx {
             mat4 mat = make_mat4(ptr+i*16);
 //        std::cout << "mat4 " << i << ":" << to_string(mat) << std::endl;
             skeleton->inverse_bind_matrices[i] = mat;
-            skeleton->joints[i]->jointed_matrices = mat;
         }
         return skeleton;
     }
 
-    ::entity_id trav_get_node(scene_t* scene,tinygltf::Model* cmodel,object_t* parent,int node_idx,std::unordered_map<int,object_t*>& nodes){
+    ::entity_id get_node(level* scene,tinygltf::Model* cmodel,::entity_id parent,int node_idx,std::unordered_map<int,::entity_id>& nodes){
         using namespace tinygltf;
 
-        Node& cnode = cmodel->nodes[node_idx];
-        object_t * node = nodes[node_idx];
+        tinygltf::Node& cnode = cmodel->nodes[node_idx];
+        ::entity_id node_entity = nodes[node_idx];
 
-        node->parent = parent;
+        auto spatial = level_get_component<Spatial3d>(scene,node_entity);
+        spatial->parent = parent;
 
         if(cnode.mesh!=-1){
             std::cout << "node mesh : " << cnode.mesh << std::endl;
-            node->has_model = 1;
-            node->model = new model_t;
-
-            scene->models[scene->model_count++] = node;
-
-            trav_get_model(scene,cmodel,node,cnode.mesh,node->model,nodes);
+            get_model_component(scene,cmodel,node_entity,cnode.mesh);
         }
 
         if(cnode.skin!=-1){
             std::cout << "node skin : " << cnode.skin << std::endl;
-            node->has_skin = 1;
-            node->skeleton = new skeleton_t;
-
-            trav_get_skin(scene,cmodel,node,cnode.skin,node->skeleton,nodes);
+            get_skin_component(scene,cmodel,node_entity,cnode.skin,nodes);
         }
 
         for (auto child_idx:cnode.children) {
-            auto child = trav_get_node(scene,cmodel,node,child_idx,nodes);
-            node->children[node->children_count++] = child;
+            auto child = get_node(scene,cmodel,node_entity,child_idx,nodes);
+            spatial->children.push_back(child);
         }
-        return node;
+        return node_entity;
     }
 
-    ::entity_id * create_node(scene_t* scene,tinygltf::Node& cnode){
+    ::entity_id create_node(level* scene,tinygltf::Node& cnode){
         using namespace tinygltf;
-        object_t * node = &scene->objects[scene->object_count++];
-        node->id = scene->object_count;
-        memset(node->name,'\0',sizeof(node->name));
-        if(cnode.name.empty()){
-            strcpy(node->name,("node_"+std::to_string(node->id)).c_str());
-        }else{
-            strcpy(node->name, cnode.name.c_str());
-        }
-        std::cout << "node : " << node->name << std::endl;
+        ::entity_id node_entity = create_entity(scene);
+
+        auto spatial = level_add_component(scene,node_entity,Spatial3d{});
+        spatial->name = cnode.name;
+        std::cout << "node : " << spatial->name << std::endl;
+
+        auto transform = level_add_component(scene,node_entity,Transform{});
 
         if(cnode.translation.size() == 3){
-            node->transform.position = make_vec3(cnode.translation.data());
+            transform->position = make_vec3(cnode.translation.data());
         }
         if(cnode.rotation.size() == 4){
-            node->transform.rotation = make_quat(cnode.rotation.data());
+            transform->rotation = make_quat(cnode.rotation.data());
         }
         if(cnode.scale.size() == 3){
-            node->transform.scale = make_vec3(cnode.scale.data());
+            transform->scale = make_vec3(cnode.scale.data());
         }
-        return node;
+        return node_entity;
     }
 
-    ::entity_id Assets::LoadAnimateModel(const char *filename) {
+    ::entity_id Assets::LoadAnimateModel(level* scene,const char *filename) {
         using namespace tinygltf;
 
         Model cmodel;
@@ -346,53 +340,54 @@ namespace wx {
 //bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
 
         if (!warn.empty()) {
-            printf("Warn: %s\n", warn.c_str());
+            WX_CORE_WARN("Warn: {}",warn);
         }
 
         if (!err.empty()) {
-            printf("Err: %s\n", err.c_str());
+            WX_CORE_ERROR("Err: {}",err);
         }
 
         if (!ret) {
-            printf("Failed to parse glTF\n");
-            return nullptr;
+            WX_CORE_ERROR("Failed to parse glTF");
+            exit(-1002);
         }
 
-        std::unordered_map<int,object_t *> nodes;
+        std::unordered_map<int,::entity_id> nodes;
 
         Scene* cscene = &cmodel.scenes[cmodel.defaultScene];
 
-        object_t * root = nullptr;
+        ::entity_id root = 0;
 
         int cnode_idx = 0;
         for (auto& cnode:cmodel.nodes) {
-            object_t * node = create_node(scene,cnode);
+            ::entity_id node = create_node(scene,cnode);
             nodes.insert(std::pair(cnode_idx++,node));
         }
 
         if(cscene->nodes.size()>1){
-            root = &scene->objects[scene->object_count++];
-            root->id = scene->object_count;
-            memset(root->name,'\0',sizeof(root->name));
-            strcpy(root->name,cscene->name.c_str());
+            root = create_entity(scene);
+            auto root_spatial = level_add_component(scene,root,Spatial3d{});
+            root_spatial->name = cscene->name;
+            level_add_component(scene,root,Transform{});
 
             for (auto idx : cscene->nodes) {
-                auto* child = trav_get_node(scene,&cmodel, root,idx,nodes);
-                root->children[root->children_count++] = child;
+                auto child = get_node(scene,&cmodel, root,idx,nodes);
+                root_spatial->children.push_back(child);
             }
         }else if(cscene->nodes.size()==1){
-            root = trav_get_node(scene,&cmodel, nullptr,cscene->nodes[0],nodes);
+            root = get_node(scene,&cmodel, 0,cscene->nodes[0],nodes);
         }else{
-            std::cerr << "Can't find any object!" << std::endl;
-            return nullptr;
+            WX_CORE_ERROR("Can't find any object!");
+            return 0;
         }
 
         if(!cmodel.animations.empty()){
-            root->has_animation = 1;
+            auto root_spatial = level_get_component<Spatial3d>(scene,root);
+
             for (auto& canimation:cmodel.animations) {
                 std::cout << "Animation : " << canimation.name << std::endl;
 
-                animation_t& anim = root->animations[root->animation_count++];
+                animation_t anim;
                 memset(anim.name,'\0',sizeof(anim.name));
                 if(canimation.name.empty()){
                     strcpy(anim.name,"default");
@@ -412,7 +407,6 @@ namespace wx {
                     }
 
                     channel.target = nodes[cchannel.target_node];
-                    channel.origin = channel.target->transform;
 
                     Accessor* input = &cmodel.accessors[sampler->input];
                     BufferView* inputBufferView = &cmodel.bufferViews[input->bufferView];
@@ -445,11 +439,10 @@ namespace wx {
                         }
                     }
                 }
-            }
-            root->animator = new Animator(root);
-        }
 
-        scene->roots[scene->root_count++] = root;
+                root_spatial->animations.push_back(anim);
+            }
+        }
         return root;
     }
 
@@ -466,10 +459,6 @@ namespace wx {
         //生成纹理
         glBindTexture(GL_TEXTURE_2D,texture);
         //为当前绑定的纹理对象设置环绕、过滤方式
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, warp.x>-1?warp.x:GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, warp.y>-1?warp.y:GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter.x>-1?filter.x:GL_LINEAR);

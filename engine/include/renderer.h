@@ -24,7 +24,8 @@ namespace wx {
     class Assets {
     public:
         static uint32_t UnitQuad();
-        static vector<entity_id> LoadModelFromGLTF(const char *filename);
+        static entity_id LoadAnimateModel(level* level,const char *filename);
+        static uint32_t LoadTexture(ivec3 shape,ivec2 filter,ivec2 warp,const unsigned char *buffer);
     };
 
     class TextureLoader {
@@ -80,25 +81,7 @@ namespace wx {
 
         static void SetAttenuation(uint32_t pid, const string &_name, Light::attenuation_t value);
 
-        static void SetLight(uint32_t pid, const string &_name, vector<Light> &lights);
-    };
-
-    class Renderer {
-    private:
-        bool WIREFRAME_MODE = false;
-        bool SHADER_MODE = true;
-
-        float frame_time = 0;
-        uint32_t frame_count = 0;
-
-        light_t* view_light;
-        bool is_light_view = false;
-    public:
-
-        void Render(const Window *window, vector<model_t> &models, vector<light_t> &lights, float delta);
-
-        void Render(const Window *window, const Camera *camera, vector<model_t> &models, vector<light_t> &lights,
-                    canvas_t canvas, float delta);
+        static void SetLight(uint32_t pid, const string &_name, vector<Light*> &lights);
     };
 
     class Debug {

@@ -32,9 +32,9 @@ namespace wx {
         }
     }
 
-    std::vector<::entity_id> models(1000);
-    std::vector<::entity_id> lights(1000);
-    std::vector<::entity_id> ui(100);
+    std::vector<::entity_id> models(1024);
+    std::vector<::entity_id> lights(124);
+    std::vector<::entity_id> ui(128);
 
     void render_update_system(level* level,float delta){
         models.clear();
@@ -116,17 +116,18 @@ namespace wx {
                 ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
             }
 
-            for (auto& model:models) {
-                Transform * transform = level_get_component<Transform>(level,model);
-                Mesh* mesh= level_get_component<Mesh>(level,model);
+            for (auto& model_entity:models) {
+                auto skin = level_get_component<Skin>(level,model_entity);
+                auto transform = level_get_component<Transform>(level,model_entity);
+                auto mesh= level_get_component<Mesh>(level,model_entity);
                 mat4 M = transform->GetGlobalTransform();
 
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-                ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
-                if(mesh->has_skin==1){
-                    for (int i = 0; i < mesh->skin->joints_count; ++i) {
-                        mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
-                        mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
+                ShaderProgram::SetInt(shaderProgram,"use_skin",skin== nullptr?0:1);
+                if(skin){
+                    for (int i = 0; i < skin->joints_count; ++i) {
+                        mat4 inverse_matrices = skin->inverse_bind_matrices[i];
+                        mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
                         joint_matrices = joint_matrices * inverse_matrices;
                         ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                     }
@@ -164,7 +165,6 @@ namespace wx {
         mat4 P = vp->project;
         mat4 V = vp->view;
 
-
         uint32_t shaderProgram = pbrShader->id;
         ShaderProgram::Bind(shaderProgram);
         ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
@@ -177,7 +177,13 @@ namespace wx {
         ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
 
         ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
-        ShaderProgram::SetLight(shaderProgram,"lights",lights);
+
+        std::vector<Light*> render_lights;
+        for(auto light_entity:lights){
+            auto * light = level_get_component<Light>(level,light_entity);
+            render_lights.push_back(light);
+        }
+        ShaderProgram::SetLight(shaderProgram,"lights",render_lights);
 
         for (int i = 0; i < 5; ++i) {
             ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",2+i);
@@ -207,23 +213,23 @@ namespace wx {
         }
 
         for (auto& model_entity:models) {
-            Transform * transform = level_get_component<Transform>(level,model_entity);
-            Mesh* mesh= level_get_component<Mesh>(level,model_entity);
+            auto skin = level_get_component<Skin>(level,model_entity);
+            auto transform = level_get_component<Transform>(level,model_entity);
+            auto mesh= level_get_component<Mesh>(level,model_entity);
             mat4 M = transform->GetGlobalTransform();
             ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-            ShaderProgram::SetInt(shaderProgram,"use_skin",mesh->has_skin);
-            if(mesh->has_skin==1){
-                for (int i = 0; i < mesh->skin->joints_count; ++i) {
-                    mat4 inverse_matrices = mesh->skin->inverse_bind_matrices[i];
-                    mat4 joint_matrices = level_get_component<Transform>(level,mesh->skin->joints[i])->GetGlobalTransform();
+            ShaderProgram::SetInt(shaderProgram,"use_skin",skin== nullptr?0:1);
+            if(skin){
+                for (int i = 0; i < skin->joints_count; ++i) {
+                    mat4 inverse_matrices = skin->inverse_bind_matrices[i];
+                    mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
                     joint_matrices = joint_matrices * inverse_matrices;
                     ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                 }
             }
 
             for (auto& primitive:mesh->primitives) {
-
-                material_t mat = primitive.materials[0];
+                material_t mat = primitive.material;
                 if(mat.has_albedo_texture){
                     glBindTextureUnit(0,mat.albedo_texture);
                 }
@@ -253,22 +259,23 @@ namespace wx {
         }
     }
 
-    void render_ui_phase_system(level* level,float delta,vector<::entity_id> items){
-        auto window = level_get_share_resource<Window>(level);
+    void render_ui_phase_system(level* level,float delta,const vector<::entity_id>& items){
+        auto vp = level_get_share_resource<VPMatrices>(level);
         auto flatShader = level_get_share_resource<FlatShader>(level);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         ShaderProgram::Bind(flatShader->id);
-        mat4 P = ortho(0.f,window->GetWidth()*1.0f,window->GetHeight()*1.0f,0.f);
+        mat4 P = vp->project;
         vec3 color = {1.0,1.0,1.0};
-        mat4 M{1.0f};
+
         ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
         ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
         for (auto item_entity:items) {
             auto canvas = level_get_component<Canvas>(level,item_entity);
 
+            mat4 M{1.0f};
             M = translate(M,vec3(canvas->position,0.0f));
             M = scale(M,vec3(canvas->size,0.0f));
             ShaderProgram::SetMat4(flatShader->id,"M", value_ptr(M));

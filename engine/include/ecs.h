@@ -197,7 +197,7 @@ namespace wx {
             return;
         }
 
-        Component<T> *new_component_type = new Component<T>();
+        auto *new_component_type = new Component<T>();
         new_component_type-> destroy_function = destroy_function;
         ComponentBase *base_component_type = new_component_type;
         level->components.insert({ type_name,base_component_type});
@@ -208,17 +208,17 @@ namespace wx {
     void destroy_entity(level * level, entity_id entity);
 
     template<typename T>
-    void level_add_component(level * level, entity_id entity,T component){
-        std::string type_name = std::string(typeid(T).name());
-        Component<T> *component_type = (Component<T> *) (level->components[type_name]);
+    T* level_add_component(level * level, entity_id entity,T component){
+        auto type_name = std::string(typeid(T).name());
+        auto *component_type = (Component<T> *) (level->components[type_name]);
 
-        component_type->create(entity, component);
+        return component_type->create(entity, component);
     }
 
     template<typename T>
     T *level_get_component(level * level, entity_id entity){
-        std::string type_name = std::string(typeid(T).name());
-        Component<T> *component_type = (Component<T> *) (level->components[type_name]);
+        auto type_name = std::string(typeid(T).name());
+        auto *component_type = (Component<T> *) (level->components[type_name]);
 
         return component_type->get_component(entity);
     }

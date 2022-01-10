@@ -54,6 +54,29 @@ namespace wx {
         }
     };
 
+    struct AnimatedTransform {
+        Transform* parent = nullptr;
+        vec3 position{0.0f};
+        quat rotation{1.0f,0.0f,0.0f,0.0f};
+        vec3 scale{1.0f};
+
+        [[nodiscard]] mat4 GetLocalTransform() const {
+            mat4 T = translate(mat4{1.0f},position);
+            mat4 R = mat4_cast(rotation);
+            mat4 S = glm::scale(mat4{1.0f},scale);
+            return T*R*S;
+        }
+
+        [[nodiscard]] mat4 GetGlobalTransform() const {
+            mat4 local = GetLocalTransform();
+            if(parent){
+                return parent->GetGlobalTransform()*local;
+            }else{
+                return local;
+            }
+        }
+    };
+
     typedef struct material_t {
         vec4 albedo{1.f};
         int has_albedo_texture = 0;
@@ -108,25 +131,50 @@ namespace wx {
 
     struct Joint{};
 #define MAX_JOINT_COUNT 64
-    typedef struct skeleton_t {
+    struct Skin {
+        std::string name;
         int joints_count = 0;
         entity_id joints[MAX_JOINT_COUNT]{};
         mat4 inverse_bind_matrices[MAX_JOINT_COUNT]{};
-    } skeleton_t;
+    };
 
     struct Mesh{
-        struct primitive {
-            VAO vao;
+        std::string name;
+        struct primitive_t {
+            VAO vao{};
             int vertices_count = 0;
             int indices_count = 0;
-            uint32_t indices_type;
-            std::vector<material_t> materials;
+            uint32_t indices_type = 0x1403;
+            material_t material;
         };
-        std::vector<primitive> primitives;
-
-        int has_skin = 0;
-        skeleton_t* skin = nullptr;
+        std::vector<primitive_t> primitives;
     };
+
+    typedef struct keyframe_t {
+        float time = 0;
+        vec3 translation{0};
+        quat rotation{1,0,0,0};
+        vec3 scale{1};
+    } keyframe_t;
+
+#define MAX_KEYFRAME_COUNT 120
+
+    typedef struct channel_t {
+        int keyframe_count = 0;
+        keyframe_t keyframe[120]{};
+        int interpolation = 0;//0-liber,1-step,2-cubic
+        bool has_translation = false;
+        bool has_rotation = false;
+        bool has_scale = false;
+        //must have AnimatedTransform component
+        ::entity_id target = 0;
+    } channel_t;
+
+    typedef struct animation_t {
+        int channel_count = 0;
+        channel_t channels[40]{};
+        char name[45]{0};
+    } animation_t;
 
     struct Canvas {
         VAO vao;
@@ -135,12 +183,11 @@ namespace wx {
         vec2 size;
     };
 
-    struct Animator {
-    };
-
-    struct Children {
-        uint32_t parent;
+    struct Spatial3d{
+        std::string name;
+        ::entity_id parent;
         std::vector<entity_id> children;
+        std::vector<animation_t> animations;
     };
 
     //resource

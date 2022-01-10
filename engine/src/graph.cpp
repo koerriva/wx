@@ -6,11 +6,6 @@
 #include "font.h"
 
 #include <stb/stb_image.h>
-#include <stb/stb_image_write.h>
-#define PI 3.1415926
-
-#define CGLTF_IMPLEMENTATION
-#include "cgltf.h"
 #include <glm/gtx/string_cast.hpp>
 
 namespace wx {
@@ -246,22 +241,22 @@ namespace wx {
         ShaderProgram::SetFloat(pid,_name+".exponent",value.exponent);
         ShaderProgram::SetFloat(pid,_name+".linear",value.linear);
     }
-    void ShaderProgram::SetLight(uint32_t pid, const string& _name, vector<Light> &lights) {
+    void ShaderProgram::SetLight(uint32_t pid, const string& _name, vector<Light*> &lights) {
         for (int i = 0; i < lights.size(); ++i) {
             auto& light = lights[i];
             string name = "lights["+ to_string(i)+"]";
-            ShaderProgram::SetInt(pid,name+".type",light.type);
-            ShaderProgram::SetInt(pid,name+".state",light.state);
-            ShaderProgram::SetVec3(pid,name+".color", value_ptr(light.color));
-            ShaderProgram::SetVec3(pid,name+".position", value_ptr(light.position));
-            ShaderProgram::SetVec3(pid,name+".direction", value_ptr(light.direction));
-            ShaderProgram::SetFloat(pid,name+".intensity",light.intensity);
-            ShaderProgram::SetFloat(pid,name+".cutoff",light.cutoff);
-            ShaderProgram::SetInt(pid,name+".has_shadow_map",light.has_shadow_map);
-            ShaderProgram::SetFloat(pid,name+".near_plane",light.near_plane);
-            ShaderProgram::SetFloat(pid,name+".far_plane",light.far_plane);
-            ShaderProgram::SetInt(pid,name+".shadow_map_index",light.shadow_map_index);
-            ShaderProgram::SetAttenuation(pid,name+".att",light.attenuation);
+            ShaderProgram::SetInt(pid,name+".type",light->type);
+            ShaderProgram::SetInt(pid,name+".state",light->state);
+            ShaderProgram::SetVec3(pid,name+".color", value_ptr(light->color));
+            ShaderProgram::SetVec3(pid,name+".position", value_ptr(light->position));
+            ShaderProgram::SetVec3(pid,name+".direction", value_ptr(light->direction));
+            ShaderProgram::SetFloat(pid,name+".intensity",light->intensity);
+            ShaderProgram::SetFloat(pid,name+".cutoff",light->cutoff);
+            ShaderProgram::SetInt(pid,name+".has_shadow_map",light->has_shadow_map);
+            ShaderProgram::SetFloat(pid,name+".near_plane",light->near_plane);
+            ShaderProgram::SetFloat(pid,name+".far_plane",light->far_plane);
+            ShaderProgram::SetInt(pid,name+".shadow_map_index",light->shadow_map_index);
+            ShaderProgram::SetAttenuation(pid,name+".att",light->attenuation);
         }
     }
 
