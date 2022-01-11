@@ -226,8 +226,30 @@ namespace wx {
                     mesh.material.albedo_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
                 }
 
+                TextureInfo metallicTextureInfo = cmat->pbrMetallicRoughness.metallicRoughnessTexture;
+                if(metallicTextureInfo.index>-1){
+                    mesh.material.has_metallic_roughness_texture = 1;
+                    Texture* metallicTexture = &cmodel->textures[metallicTextureInfo.index];
+                    Sampler* sampler = &cmodel->samplers[metallicTexture->sampler];
+                    Image* image = &cmodel->images[metallicTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.metallic_roughness_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
                 mesh.material.albedo = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
+                mesh.material.metallic = cmat->pbrMetallicRoughness.metallicFactor;
+                mesh.material.roughness = cmat->pbrMetallicRoughness.roughnessFactor;
             }
+
+            model->primitives.push_back(mesh);
         }
 
         return model;
@@ -292,6 +314,7 @@ namespace wx {
         if(cnode.mesh!=-1){
             std::cout << "node mesh : " << cnode.mesh << std::endl;
             get_model_component(scene,cmodel,node_entity,cnode.mesh);
+            level_add_component(scene,node_entity,ReceiveShadow{});
         }
 
         if(cnode.skin!=-1){

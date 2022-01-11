@@ -17,9 +17,9 @@ namespace wx {
     void camera_update_system(level* level,float delta);
     //render
     void render_update_system(level* level,float delta);
-    void render_shadow_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights);
-    void render_mesh_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights);
-    void render_ui_phase_system(level* level,float delta,const vector<::entity_id>& items);
+    void render_shadow_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights);
+    void render_mesh_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,::entity_id camera);
+    void render_ui_phase(level* level,float delta,const vector<::entity_id>& items);
 
     //Application
     void third_person_camera_controller_system(level* level,float delta);

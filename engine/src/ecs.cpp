@@ -16,6 +16,14 @@ namespace wx {
 
             ++level_components_iter;
         }
+
+        auto level_resource_iter = level->resources.begin();
+        while (level_resource_iter!=level->resources.end()){
+            level_resource_iter->second->free();
+
+            ++level_resource_iter;
+        }
+
         delete level;
     }
 
@@ -29,6 +37,35 @@ namespace wx {
         level->systems.erase(system_name);
     }
 
+    entity_id create_entity(level* level)
+    {
+        if (!level->empty_entities_spots.empty())
+        {
+            uint32_t empty_spot = level->empty_entities_spots.front();
+            level->empty_entities_spots.pop();
+            level->entities[empty_spot] += 1;
+            entity_id new_entity = CREATE_ID(level->entities[empty_spot], empty_spot);
+            return new_entity;
+        }
+
+        level->entities.push_back(1);
+        return CREATE_ID(1, level->entities.size() - 1);
+    }
+
+    void destroy_entity(level* level, entity_id entity)
+    {
+        uint32_t entity_index = GET_INDEX(entity);
+        level->entities[entity_index] += 1;
+        level->empty_entities_spots.push(entity_index);
+
+        auto level_components_iterator = level->components.begin();
+        while (level_components_iterator != level->components.end())
+        {
+            level_components_iterator->second->destroy(entity);
+
+            ++level_components_iterator;
+        }
+    }
 
     entity_id ComponentBase::get_entity(uint32_t component) {
         uint32_t component_index = GET_INDEX(component);

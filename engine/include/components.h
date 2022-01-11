@@ -95,7 +95,6 @@ namespace wx {
         uint32_t texture;
         uint32_t width;
         uint32_t height;
-        uint32_t shader;
     } shadow_map_t;
 
     struct CastShadow{};
@@ -179,8 +178,8 @@ namespace wx {
     struct Canvas {
         VAO vao;
         TEXTURE texture;
-        vec2 position;
-        vec2 size;
+        vec2 position{0};
+        vec2 size{0};
     };
 
     struct Spatial3d{
@@ -194,6 +193,7 @@ namespace wx {
     struct VPMatrices {
         mat4 view{1.0f};
         mat4 project{1.0f};
+        mat4 ortho{1.0f};
     };
     struct FrameState{
         float delta_time=0.0f;
@@ -207,6 +207,25 @@ namespace wx {
 
     struct FlatShader{
         uint32_t id;
+    };
+
+    struct FontShader{
+        uint32_t id;
+    };
+
+    struct DepthShader{
+        uint32_t id;
+    };
+
+    struct DepthCubeShader{
+        uint32_t id;
+    };
+
+    struct WindowConfig {
+        std::string title;
+        int width=1280;
+        int height=720;
+        bool vSync = true;
     };
 
     struct InputState {

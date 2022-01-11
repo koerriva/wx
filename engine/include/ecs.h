@@ -14,6 +14,9 @@
 #include <string>
 
 #include "log.h"
+
+#define SYSTEM_NAME(FN) #FN
+
 namespace wx {
 #define MAX_ENTITIES 0xFFFF
 
@@ -23,7 +26,6 @@ namespace wx {
 #define GET_GENERATION(id) ((id & 0xFF000000) >> GENERATION_BIT)
 #define GET_INDEX(id) (id & CAPACITY_ENTITIES)
 #define CREATE_ID(generation, index) (generation << GENERATION_BIT) | index
-
 // The upper 8 bits is the generation
 // The lower 24 bits is the actual index in the array
 
@@ -36,8 +38,8 @@ namespace wx {
 
     class ComponentBase {
     protected:
-        generational_ptr component_to_entity[MAX_ENTITIES];//被几个entity引用
-        generational_ptr entity_to_component[MAX_ENTITIES];//被几个component引用
+        generational_ptr component_to_entity[MAX_ENTITIES]{};//被几个entity引用
+        generational_ptr entity_to_component[MAX_ENTITIES]{};//被几个component引用
         uint32_t last_component = 0;
 
     public:
@@ -133,23 +135,30 @@ namespace wx {
         void (*destroy_function)(T *);
     };
 
-    class ShareResourceBase {};
+    class ShareResourceBase {
+    public:
+        virtual void free() = 0;
+    };
 
     template<typename T>
     class ShareResource : public ShareResourceBase{
-    private:
-        std::atomic<T> value;
+    protected:
+         T value;
     public:
         explicit ShareResource(T _value):value(_value){};
 
-        T* Get(){
-            return value.load();
+        T* GetValue(){
+            return &value;
         }
 
-        T* Set(T newValue){
-            value.store(newValue);
-            return value.load();
+        void free() override {
+            if (destroy_function == nullptr) {
+                return;
+            }
+            destroy_function(&value);
         }
+
+        void (*destroy_function)(T *);
     };
 
     typedef struct level _level;
@@ -170,13 +179,15 @@ namespace wx {
 
     level *level_create();
 
-    void level_destroy(level * level);
+    void level_destroy(level* level);
 
     void level_register_system(level * level, system_t system_update, const char *system_name);
 
     void level_unregister_system(level * level, const char *system_name);
 
-    void level_register_share_resource(level * level,ShareResourceBase* value);
+    entity_id create_entity(level * level);
+
+    void destroy_entity(level * level, entity_id entity);
 
     template<typename T>
     void level_register_component(level * level) {
@@ -203,10 +214,6 @@ namespace wx {
         level->components.insert({ type_name,base_component_type});
     }
 
-    entity_id create_entity(level * level);
-
-    void destroy_entity(level * level, entity_id entity);
-
     template<typename T>
     T* level_add_component(level * level, entity_id entity,T component){
         auto type_name = std::string(typeid(T).name());
@@ -219,7 +226,7 @@ namespace wx {
     T *level_get_component(level * level, entity_id entity){
         auto type_name = std::string(typeid(T).name());
         auto *component_type = (Component<T> *) (level->components[type_name]);
-
+        if(component_type== nullptr)return nullptr;
         return component_type->get_component(entity);
     }
 
@@ -253,15 +260,22 @@ namespace wx {
             return;
         }
 
-        auto *new_share_resource = new Component<T>();
-        ShareResourceBase * shareResourceBase = new_share_resource;
+        auto new_value = new ShareResource<T>(value);
+        ShareResourceBase* shareResourceBase = new_value;
         level->resources.insert({type_name, shareResourceBase});
     }
 
     template<typename T>
     T* level_get_share_resource(level* level){
         std::string type_name = typeid(T).name();
-        return level->resources[type_name];
+        auto res = (ShareResource<T>*)level->resources[type_name];
+        return res->GetValue();
+    }
+
+    template<typename T>
+    bool level_has_share_resource(level* level){
+        std::string type_name = typeid(T).name();
+        return level->resources[type_name] != nullptr;
     }
 }
 #endif //WX_ECS_H

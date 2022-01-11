@@ -8,31 +8,13 @@
 #include "engine.h"
 
 namespace wx {
-    class GLTFViewer : public IGameLogic {
-    public:
-        GLTFViewer();
-        ~GLTFViewer();
-
-        void Init(Window *window) override;
-
-        void Input(Window *window) override;
-
-        void Update(float elapsedTime) override;
-
-        void Render(Window *window, float elapsedTime) override;
-
-        void Cleanup() override;
-
-    private:
-        Renderer* renderer;
+    struct GLTFViewer {
         Camera* camera;
         Debug* debug;
-        vector<model_t> models;
-        vector<light_t> lights;
-        canvas_t canvas;
-
+        vector<::entity_id> models;
+        vector<::entity_id> lights;
+        ::entity_id canvas;
         bool debug_light_switch = false;
-
         bool hideCursor = false;
     };
 }

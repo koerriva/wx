@@ -22,14 +22,8 @@ namespace wx {
         bool vsync = true;
         string title;
         bool closed = false;
-
         GLFWwindow* glfwWindow = nullptr;
-
         float widthScale=1.0f,heightScale=1.0f;
-
-        double mLastX = width/2,mLastY = height/2,mXOffset,mYOffset;
-
-
 
     public:
         Window(string title,int width,int height,bool vsync);
@@ -94,14 +88,6 @@ namespace wx {
 
         [[nodiscard]] bool VSynced() const {
             return vsync;
-        }
-
-        [[nodiscard]] double GetMouseXOffset() const{
-            return mXOffset;
-        }
-
-        [[nodiscard]] double GetMouseYOffset() const{
-            return mYOffset;
         }
     };
 }

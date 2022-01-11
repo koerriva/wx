@@ -6,6 +6,6 @@ out vec2 v_TexCoord;
 uniform mat4 P;
 uniform mat4 M;
 void main() {
-    gl_Position = P*M*vec4(vertex.xy,0.0,1.0);
+    gl_Position = P*M*vec4((vertex.xy+1)/2,0.0,1.0);
     v_TexCoord = vertex.zw;
 }

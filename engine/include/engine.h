@@ -55,34 +55,58 @@ namespace wx {
         }
     };
 
-    class IGameLogic{
-    public:
-        virtual void Init(Window *window) = 0;
-        virtual void Input(Window* window) = 0;
-        virtual void Update(float elapsedTime) = 0;
-        virtual void Render(Window* window,float elapsedTime) = 0;
-        virtual void Cleanup() = 0;
-    };
-
-    class GameEngine {
+    class App{
     private:
         const float TARGET_FPS = 60;
-        const float TARGET_UPS = 30;
+        const float TARGET_UPS = 60;
 
-        Window *window;
-        IGameLogic *game;
-        Timer *timer;
     public:
-        GameEngine(const char *title, int width, int height, bool vsync, IGameLogic *game);
-        ~GameEngine();
+        App();
+
+        App& Setup();
+
+        template<typename... T>
+        App& Spawn(T ...components) {
+            ::entity_id entity = create_entity(level);
+
+            SpawnBundle(unpack(entity,components)...);
+
+            return *this;
+        }
+
+        App& SpawnFromModel(const std::string& model_file){
+            std::string filename = "data/"+model_file;
+            Assets::LoadAnimateModel(level,filename.c_str());
+        }
+
+        App& AddSystem(const char* name,system_t system);
+
+        template<typename T>
+        App& InsertResource(T resource) {
+            level_insert_share_resource(level,resource);
+            return *this;
+        }
         void Run();
-    protected:
-        void Init();
-        void Input();
-        void Update(float elapsedTime);
-        void Render(float elapsedTime);
-        void Sync();
-        void Cleanup();
+        App& Cleanup();
+
+    private:
+        template<typename T>
+        T unpack(::entity_id entity,const T& t) {
+            std::cout << "component : " << typeid(T).name() << std::endl;
+            level_register_component<T>(level);
+            level_add_component(level,entity,t);
+            return t;
+        }
+
+        template<typename... T>
+        void SpawnBundle(T... components){}
+
+        level* level;
+        std::vector<std::string> engine_components;
+        std::vector<std::string> game_components;
+
+        std::vector<std::string> engine_systems;
+        std::vector<std::string> game_systems;
     };
 }
 #endif //WX_ENGINE_H

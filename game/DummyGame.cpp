@@ -4,164 +4,74 @@
 
 #include "DummyGame.h"
 
-#define EARTH_RADIUS 1000
 namespace wx {
+    struct Sun{};
 
-    DummyGame::DummyGame(){
-        this->renderer = new Renderer();
-        this->timer = new Timer();
-    }
+    void test_input_system(level* level,float delta){
+        auto inputState = level_get_share_resource<InputState>(level);
 
-    DummyGame::~DummyGame(){
-        cout << "Drop DummyGame" << endl;
-    }
+        Light* sun = 0;
+        auto entities_iter = level->entities.begin();
+        auto entities_begin = level->entities.begin();
 
-    void DummyGame::Init(Window *window){
-        WX_INFO("DummyGame Init...");
-        renderer->Init();
-
-        this->baseShader = ShaderProgram::LoadShader("base");
-        meshList.push_back(MeshLoader::Sphere(EARTH_RADIUS, 72, 36));
-
-        int len;
-        const unsigned char* buffer = AssetsLoader::LoadTexture("earthmap4k.jpg",&len);
-        auto tex = TextureLoader(buffer, len);
-        textures.push_back(tex);
-
-
-        this->terrain = new Terrain();
-        this->terrain->Init();
-        this->terrainShader = ShaderProgram::LoadShader("terrain");
-
-        this->camera = new Camera(vec3{0,25,500});
-        this->camera->Rotate(0,70);
-        cameraLen = length(camera->Position());
-
-        debug = new Debug();
-
-        timer->Init();
-    }
-
-    void DummyGame::Input(Window* window){
-        if(window->GetKeyPressed(KeyCode::ESC)){
-            window->Close();
+        while (entities_iter != level->entities.end()){
+            uint32_t entity_idx = entities_iter-entities_begin;
+            entity_id entity = CREATE_ID((*entities_iter),entity_idx);
+            if(entity!=0 && level_has_components<Sun>(level,entity)){
+                sun = level_get_component<Light>(level,entity);
+                break;
+            }
+            entities_iter++;
         }
 
-        cameraState.x = 0.f;
-        cameraState.y = 0.f;
-        if(window->GetKeyPressed(KeyCode::W)){
-            cameraState.x = 1.f;
+        if(inputState->GetKeyPressed(InputState::K)){
+            WX_INFO("Pressed K");
+            if(sun){
+                sun->state = sun->state==0?1:0;
+            }
         }
-        if(window->GetKeyPressed(KeyCode::S)){
-            cameraState.x = -1.f;
-        }
-        if(window->GetKeyPressed(KeyCode::D)){
-            cameraState.y = 1.f;
-        }
-        if(window->GetKeyPressed(KeyCode::A)){
-            cameraState.y = -1.f;
-        }
-
-        if(window->GetKeyPressed(F1)){
-            renderer->SetShaderMode();
-        }
-        if(window->GetKeyPressed(F2)){
-            renderer->SetWireframeMode();
-        }
-
-        cameraDirection.x = 0;
-        cameraDirection.y = 0;
-        if(window->GetMouseButtonPressed(M_RIGHT)){
-            cameraDirection.x = static_cast<float>(window->GetMouseXOffset());
-            cameraDirection.y = static_cast<float>(window->GetMouseYOffset());
-        }
-    }
-
-    void DummyGame::Update(float interval){
-        camera->MoveForward(cameraState.x*interval*10.f);
-        camera->MoveRight(cameraState.y*interval*10.f);
-        camera->Rotate(cameraDirection.x,cameraDirection.y);
-        updateRate = interval;
-        cameraLen = length(camera->Position());
-        if(cameraLen<25){
-            LOD = static_cast<int>(glm::clamp(25.f/cameraLen,1.f,5.f));
-        }else{
-            LOD = 1;
-        }
-        terrain->Update(LOD);
-    }
-
-    void DummyGame::Render(Window* window,float elapsedTime){
-        frameTime += float(timer->GetElapsedTime());
-        frameCount += 1;
-        if(frameRate==0&&frameTime>0){
-            frameRate = int(frameCount/frameTime);
-        }
-
-        glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
-        glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
-
-        renderer->Render(window,camera,meshList,textures,baseShader);
-//        renderer->Render(window,camera,terrain,terrainShader);
-
-        std::string text = "帧率:"+to_string(frameRate)+","+to_string(int(1/elapsedTime));
-        debug->PrintScreen(vec2{5,5},text.c_str(),vec3{0.05f,.99f,0.05f});
-
-        vec3 camPos = camera->Position();
-
-        text = "相机坐标:"+to_string(camPos.x)+","+to_string(camPos.y)+","+to_string(camPos.z);
-        debug->PrintScreen(vec2{5,25},text.c_str(),vec3{0.05f,.99f,0.05f});
-        vec3 camRot = camera->Rotation();
-
-        text = "相机角度:"+to_string(camRot.x)+","+to_string(camRot.y)+","+to_string(camRot.z);
-        debug->PrintScreen(vec2{5,45},text.c_str(),vec3{0.05f,.99f,0.05f});
-
-        text = "视距:"+to_string(cameraLen);
-        debug->PrintScreen(vec2{5,65},text.c_str(),vec3{0.05f,.99f,0.05f});
-
-        text = "LOD:"+to_string(LOD);
-        debug->PrintScreen(vec2{5,85},text.c_str(),vec3{0.05f,.99f,0.05f});
-
-        size_t chunks = terrain->GetChunkSize();
-        text = "块数:"+to_string(chunks);
-        debug->PrintScreen(vec2{5,105},text.c_str(),vec3{0.05f,.99f,0.05f});
-
-        if(frameTime>1.0){
-            frameRate = int(frameCount/frameTime);
-            frameTime=0;
-            frameCount=0;
-        }
-    }
-
-    void DummyGame::Cleanup(){
-        for(auto& mesh:meshList){
-            mesh.Cleanup();
-        }
-
-        for(auto& tex:textures){
-            tex.Cleanup();
-        }
-
-        terrain->Cleanup();
-
-        delete terrain;
-
-        ShaderProgram::Cleanup(terrainShader);
-
-        delete camera;
-
-        delete renderer;
-
-        delete timer;
     }
 }
 
 int main(int argc,char** argv) {
+    using namespace glm;
+    using namespace wx;
+
     system("chcp 65001");
 
     wx::Log::Init();
     WX_INFO("我的游戏引擎 0.2");
-    wx::DummyGame game;
-    wx::GameEngine engine("我的游戏引擎 0.2.0", 1280, 720, true, &game);
-    engine.Run();
+    auto* app = new wx::App();
+    app->InsertResource(wx::WindowConfig{"我的游戏引擎 0.2.0"})
+    .Setup()
+    .AddSystem(SYSTEM_NAME(wx::test_input_system),wx::test_input_system);
+
+    wx::Canvas canvas{};
+    canvas.position = glm::vec2(0,0);
+    canvas.size = glm::vec2(100,100);
+    canvas.vao = wx::Assets::UnitQuad();
+
+    wx::Camera camera{};
+    camera.position = glm::vec3(0.0f,0.0f,5.0f);
+
+    wx::Light sun{};
+    sun.type = wx::Light::directional;
+    sun.color = vec3{1.0f};
+    sun.direction = vec3{0,-1,1};
+    sun.intensity = 100;
+    sun.shadow_map = wx::TextureLoader::LoadDepthMap(2048, 2048);
+    sun.has_shadow_map = 1;
+    sun.near_plane = -20.f;
+    sun.far_plane = 20.f;
+
+    sun.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, sun.near_plane, sun.far_plane);;
+    sun.v = glm::lookAt(vec3{-5,5,0}, sun.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+    app->Spawn(sun,CastShadow{},Sun{});
+
+    app->Spawn(canvas);
+    app->Spawn(camera,wx::MainCamera{});
+    app->SpawnFromModel("model/Sphere.gltf");
+
+    app->Run();
 }

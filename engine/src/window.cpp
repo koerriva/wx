@@ -12,13 +12,21 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 
+#include "systems.h"
+
 namespace wx {
+    void window_update_system(level* level,float delta){
+        auto window = level_get_share_resource<Window>(level);
+        window->Update();
+    }
+
     Window::Window(string title,int width,int height,bool vsync)
     {
         this->height=height;
         this->width=width;
         this->vsync=vsync;
         this->title = std::move(title);
+        this->aspect = float(width)/float(height);
     }
 
     Window::~Window() = default;
@@ -42,6 +50,16 @@ namespace wx {
                 exit(-1);
             }
 
+            //
+            int w,h;
+            glfwGetWindowSize(glfwWindow,&w,&h);
+            WX_CORE_INFO("Window Size ({},{})",w,h);
+            glfwGetFramebufferSize(glfwWindow,&w,&h);
+            WX_CORE_INFO("FrameBuffer Size Size ({},{})",w,h);
+            glfwGetWindowContentScale(glfwWindow,&widthScale,&heightScale);
+            WX_CORE_INFO("Window Scale ({},{})",widthScale,heightScale);
+
+            glfwSetWindowSize(glfwWindow,width,height);
             //set window to center
             GLFWmonitor* monitor = glfwGetPrimaryMonitor();
             const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -62,16 +80,7 @@ namespace wx {
             if(vsync){
                 glfwSwapInterval(1);
             }
-
-            int w,h;
-            glfwGetWindowSize(glfwWindow,&w,&h);
-            WX_CORE_INFO("Window Size ({},{})",w,h);
-            glfwGetFramebufferSize(glfwWindow,&w,&h);
-            WX_CORE_INFO("FrameBuffer Size Size ({},{})",w,h);
-            glfwGetWindowContentScale(glfwWindow,&widthScale,&heightScale);
-            WX_CORE_INFO("Window Scale ({},{})",widthScale,heightScale);
         }
-
     }
 
     void Window::Update(){

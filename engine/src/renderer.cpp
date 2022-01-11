@@ -23,13 +23,13 @@ namespace wx {
             if(entity!=0 && level_has_components<Camera,MainCamera>(level,entity)){
                 auto * camera = level_get_component<Camera>(level,entity);
                 //计算观察矩阵
-                if(level_has_components<MainCamera>(level,entity)){
-                    matrix->view = lookAt(camera->position,camera->position+camera->front,camera->up);
-                    matrix->project = perspective(radians(60.f),window->GetAspect(),0.1f,1000.f);
-                }
+                matrix->view = lookAt(camera->position,camera->position+camera->front,camera->up);
             }
             entities_iter++;
         }
+
+        matrix->project = perspective(radians(60.f),window->GetAspect(),0.1f,1000.f);
+        matrix->ortho = ortho(0.f,float(window->GetWidth()),float(window->GetHeight()),0.f);
     }
 
     std::vector<::entity_id> models(1024);
@@ -39,9 +39,12 @@ namespace wx {
     void render_update_system(level* level,float delta){
         models.clear();
         lights.clear();
+        ui.clear();
 
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
+
+        ::entity_id main_camera = 0;
         while (entities_iter != level->entities.end()){
             uint32_t entity_idx = entities_iter-entities_begin;
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
@@ -54,12 +57,15 @@ namespace wx {
             if(entity!=0 && level_has_components<Canvas>(level,entity)){
                 ui.push_back(entity);
             }
+            if(entity!=0 && level_has_components<MainCamera>(level,entity)){
+                main_camera = entity;
+            }
             entities_iter++;
         }
 
-        render_shadow_phase_system(level,delta,models,lights);
-        render_mesh_phase_system(level,delta,models,lights);
-        render_ui_phase_system(level,delta,ui);
+        render_shadow_phase(level,delta,models,lights);
+        render_mesh_phase(level,delta,models,lights,main_camera);
+        render_ui_phase(level,delta,ui);
 
         auto* frameState = level_get_share_resource<FrameState>(level);
         frameState->delta_time = delta;
@@ -67,7 +73,7 @@ namespace wx {
         frameState->total_count += 1;
     }
 
-    void render_shadow_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights){
+    void render_shadow_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights){
         glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
         auto right_left_face_view = [](vec3 position,float dir)->mat4 {
             return lookAt(position, position + vec3(dir,0.0,0.0), vec3(0.0,-1.0,0.0));
@@ -78,6 +84,9 @@ namespace wx {
         auto near_far_face_view = [](vec3 position,float dir)->mat4{
             return lookAt(position, position + vec3(0.0,0.0,dir), vec3(0.0,-1.0,0.0));
         };
+
+        auto depth_shader = level_get_share_resource<DepthShader>(level);
+        auto depth_cube_shader = level_get_share_resource<DepthCubeShader>(level);
 
         for (auto & light_entity:lights) {
             auto* light = level_get_component<Light>(level,light_entity);
@@ -93,10 +102,12 @@ namespace wx {
 //            glCullFace(GL_BACK);
 //            glCullFace(GL_FRONT);
 
-            uint32_t shaderProgram = light->shadow_map.shader;
-            ShaderProgram::Bind(shaderProgram);
+            uint32_t shaderProgram = depth_shader->id;
 
             if(light->type==Light::point){
+                shaderProgram = depth_cube_shader->id;
+                ShaderProgram::Bind(shaderProgram);
+
                 shadowCubeTransforms[0] = light->p * right_left_face_view(light->position,1.0);//right
                 shadowCubeTransforms[1] = light->p * right_left_face_view(light->position,-1.0f);//left
                 shadowCubeTransforms[2] = light->p * up_down_face_view(light->position,1.0);//up
@@ -109,9 +120,10 @@ namespace wx {
                 }
                 ShaderProgram::SetVec3(shaderProgram,"lightPos", value_ptr(light->position));
                 ShaderProgram::SetFloat(shaderProgram,"far_plane",light->far_plane);
-            }
+            }else if(light->type==Light::spot||light->type==Light::directional){
+                shaderProgram = depth_shader->id;
+                ShaderProgram::Bind(shaderProgram);
 
-            if(light->type==Light::spot||light->type==Light::directional){
                 mat4 pv = light->p * light->v;
                 ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
             }
@@ -152,13 +164,13 @@ namespace wx {
         }
     }
 
-    void render_mesh_phase_system(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,entity_id camera){
+    void render_mesh_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,entity_id camera){
         auto window = level_get_share_resource<Window>(level);
         auto vp = level_get_share_resource<VPMatrices>(level);
         auto pbrShader = level_get_share_resource<PBRShader>(level);
         auto* frameState = level_get_share_resource<FrameState>(level);
 
-        glViewport(0,0,window->GetFrameBufferWidth(),window->GetFrameBufferHeight());
+        glViewport(0,0,window->GetWidth(),window->GetHeight());
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
@@ -259,19 +271,22 @@ namespace wx {
         }
     }
 
-    void render_ui_phase_system(level* level,float delta,const vector<::entity_id>& items){
+    void render_ui_phase(level* level,float delta,const vector<::entity_id>& items){
+        auto window = level_get_share_resource<Window>(level);
         auto vp = level_get_share_resource<VPMatrices>(level);
         auto flatShader = level_get_share_resource<FlatShader>(level);
+        auto* frameState = level_get_share_resource<FrameState>(level);
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         ShaderProgram::Bind(flatShader->id);
-        mat4 P = vp->project;
+        mat4 P = vp->ortho;
         vec3 color = {1.0,1.0,1.0};
 
         ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
         ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
+        ShaderProgram::SetInt(flatShader->id,"texture0",0);
         for (auto item_entity:items) {
             auto canvas = level_get_component<Canvas>(level,item_entity);
 
@@ -279,7 +294,6 @@ namespace wx {
             M = translate(M,vec3(canvas->position,0.0f));
             M = scale(M,vec3(canvas->size,0.0f));
             ShaderProgram::SetMat4(flatShader->id,"M", value_ptr(M));
-            ShaderProgram::SetInt(flatShader->id,"texture0",0);
 //        glActiveTexture(GL_TEXTURE0);
             glBindTextureUnit(0,canvas->texture);
             glBindVertexArray(canvas->vao);
