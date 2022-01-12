@@ -12,7 +12,7 @@ using namespace glm;
 namespace wx {
 
     void gltf_viewer_game(App* app){
-        app->InsertResource(WindowConfig{"我的游戏引擎 0.2.3",1920,1080});
+        app->InsertResource(WindowConfig{"Metaverse Engine 0.2.4",1920,1080});
         WX_INFO("_1-------------------------------------");
         wx::Canvas canvas{};
         canvas.position = glm::vec2(0,0);
