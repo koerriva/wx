@@ -63,8 +63,6 @@ namespace wx {
     public:
         App();
 
-        App& Setup();
-
         template<typename... T>
         App& Spawn(T ...components) {
             ::entity_id entity = create_entity(level);
@@ -74,19 +72,25 @@ namespace wx {
             return *this;
         }
 
-        App& SpawnFromModel(const std::string& model_file){
-            std::string filename = "data/"+model_file;
-            Assets::LoadAnimateModel(level,filename.c_str());
+        App& SpawnFromModel(const std::string& model_file,const std::string& name="",const Transform& transform={}){
+            std::string filename = model_file;
+            Assets::LoadAnimateModel(level,filename.c_str(),name.c_str(),transform);
+            return *this;
         }
 
         App& AddSystem(const char* name,system_t system);
+
+        App& AddStartupSystem(const char* name,system_t system);
 
         template<typename T>
         App& InsertResource(T resource) {
             level_insert_share_resource(level,resource);
             return *this;
         }
+
+        App& AddPlugin(const char* name,plugin_t plugin);
         void Run();
+
         App& Cleanup();
 
     private:
@@ -107,6 +111,12 @@ namespace wx {
 
         std::vector<std::string> engine_systems;
         std::vector<std::string> game_systems;
+
+        std::vector<std::string> engine_startup_systems;
+        std::vector<std::string> game_startup_systems;
+
+        std::vector<std::string> engine_plugins;
+        std::vector<std::string> game_plugins;
     };
 }
 #endif //WX_ENGINE_H

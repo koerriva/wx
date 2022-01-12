@@ -10,7 +10,7 @@ namespace wx {
     void test_input_system(level* level,float delta){
         auto inputState = level_get_share_resource<InputState>(level);
 
-        Light* sun = 0;
+        Light* sun = nullptr;
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
 

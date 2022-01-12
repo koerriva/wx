@@ -11,9 +11,10 @@
 namespace wx {
     void camera_update_system(level* level,float delta){
         auto* window = level_get_share_resource<Window>(level);
-        if(window== nullptr)return;
         auto* matrix = level_get_share_resource<VPMatrices>(level);
-        if(matrix== nullptr)return;
+        if(matrix== nullptr){
+            WX_CORE_ERROR("[Update VPMatrices Err] : VPMatrices not found");
+        }
 
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
@@ -129,14 +130,16 @@ namespace wx {
             }
 
             for (auto& model_entity:models) {
-                auto skin = level_get_component<Skin>(level,model_entity);
                 auto transform = level_get_component<Transform>(level,model_entity);
                 auto mesh= level_get_component<Mesh>(level,model_entity);
                 mat4 M = transform->GetGlobalTransform();
 
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-                ShaderProgram::SetInt(shaderProgram,"use_skin",skin== nullptr?0:1);
-                if(skin){
+                auto has_skin = level_has_components<Skin>(level,model_entity);
+                ShaderProgram::SetInt(shaderProgram,"use_skin",has_skin);
+                if(has_skin){
+                    auto skin = level_get_component<Skin>(level,model_entity);
+                    ShaderProgram::SetInt(shaderProgram,"use_skin",0);
                     for (int i = 0; i < skin->joints_count; ++i) {
                         mat4 inverse_matrices = skin->inverse_bind_matrices[i];
                         mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
@@ -160,6 +163,7 @@ namespace wx {
 
 //            glCullFace(GL_BACK);
 //            glDisable(GL_CULL_FACE);
+            glDisable(GL_DEPTH_TEST);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
     }
@@ -187,6 +191,7 @@ namespace wx {
 
         ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
         ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
+        ShaderProgram::SetInt(shaderProgram,"ao_texture",2);
 
         ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
 
@@ -204,8 +209,7 @@ namespace wx {
 
         int cube_map_index = 0;
         int map_index = 0;
-        for (auto & light_entity : lights) {
-            auto* light = level_get_component<Light>(level,light_entity);
+        for (auto light : render_lights) {
             if(light->has_shadow_map){
                 if(light->type==Light::point){
                     int index = 2+5+cube_map_index;
@@ -225,13 +229,14 @@ namespace wx {
         }
 
         for (auto& model_entity:models) {
-            auto skin = level_get_component<Skin>(level,model_entity);
             auto transform = level_get_component<Transform>(level,model_entity);
             auto mesh= level_get_component<Mesh>(level,model_entity);
             mat4 M = transform->GetGlobalTransform();
             ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-            ShaderProgram::SetInt(shaderProgram,"use_skin",skin== nullptr?0:1);
-            if(skin){
+            auto has_skin = level_has_components<Skin>(level,model_entity);
+            ShaderProgram::SetInt(shaderProgram,"use_skin",has_skin);
+            if(has_skin){
+                auto skin = level_get_component<Skin>(level,model_entity);
                 for (int i = 0; i < skin->joints_count; ++i) {
                     mat4 inverse_matrices = skin->inverse_bind_matrices[i];
                     mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
@@ -250,13 +255,15 @@ namespace wx {
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
                 }
 
-                ShaderProgram::SetVec4(shaderProgram, "albedo", value_ptr(mat.albedo));
+                ShaderProgram::SetVec4(shaderProgram, "albedo_factor", value_ptr(mat.albedo_factor));
                 ShaderProgram::SetInt(shaderProgram,"has_albedo_texture",mat.has_albedo_texture);
 
-                ShaderProgram::SetFloat(shaderProgram, "metallic", mat.metallic);
-                ShaderProgram::SetFloat(shaderProgram, "roughness", mat.roughness);
-                ShaderProgram::SetFloat(shaderProgram,"ao",mat.ao);
+                ShaderProgram::SetFloat(shaderProgram, "metallic_factor", mat.metallic_factor);
+                ShaderProgram::SetFloat(shaderProgram, "roughness_factor", mat.roughness_factor);
                 ShaderProgram::SetInt(shaderProgram,"has_metallic_roughness_texture",mat.has_metallic_roughness_texture);
+
+                ShaderProgram::SetFloat(shaderProgram,"ao_factor",mat.ao);
+                ShaderProgram::SetInt(shaderProgram,"has_ao_texture",0);
 
                 glBindVertexArray(primitive.vao);
                 if(primitive.indices_count==0){
@@ -266,9 +273,11 @@ namespace wx {
                 }
                 glBindVertexArray(0);
             }
-
-            ShaderProgram::Unbind();
         }
+
+        ShaderProgram::Unbind();
+
+        glDisable(GL_DEPTH_TEST);
     }
 
     void render_ui_phase(level* level,float delta,const vector<::entity_id>& items){

@@ -6,9 +6,6 @@
 #define WX_ASSETS_H
 
 #define FILE_SPLITER "\\"
-#ifdef __APPLE__
-#define FILE_SPLITER "/"
-#endif
 
 #include <filesystem>
 #include <fstream>
@@ -38,12 +35,14 @@ namespace wx {
         const char* loadShader(const char* name,int type);
         const unsigned char* loadTexture(const char* name,int* len);
         const unsigned char* loadRawData(const char* name,int* len);
+        const FileInfo& fileInfo(const char* name);
         void cleanup(){
             data.clear();
         }
     public:
         ~AssetsLoader(){
             std::cout << "Drop AssetsLoader" << std::endl;
+            Cleanup();
         };
 
         static void Init(){
@@ -61,6 +60,10 @@ namespace wx {
 
         static const unsigned char* LoadRawData(const char* name,int* len){
             return _instance->loadRawData(name,len);
+        }
+
+        static const FileInfo& FileInfo(const char* name){
+            return _instance->fileInfo(name);
         }
 
         static void Cleanup(){

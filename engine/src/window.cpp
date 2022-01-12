@@ -20,6 +20,7 @@ namespace wx {
         window->Update();
     }
 
+    Window::Window() {}
     Window::Window(string title,int width,int height,bool vsync)
     {
         this->height=height;
@@ -80,6 +81,8 @@ namespace wx {
             if(vsync){
                 glfwSwapInterval(1);
             }
+
+            glfwHideWindow(glfwWindow);
         }
     }
 
@@ -104,5 +107,41 @@ namespace wx {
 
     void Window::GetCursorPos(double * x,double * y){
         glfwGetCursorPos(glfwWindow,x,y);
+    }
+
+    void Window::SetWindowTitle(const char *name) {
+        this->title = name;
+        glfwSetWindowTitle(glfwWindow,name);
+    }
+
+    void Window::SetWindowSize(int width, int height) {
+        this->width = width;
+        this->height = height;
+        this->aspect = float(this->width)/float(this->height);
+        glfwSetWindowSize(glfwWindow,width,height);
+    }
+
+    void Window::SetVSync(bool vSync) {
+        this->vsync = vSync;
+        glfwSwapInterval(vSync?1:0);
+    }
+
+    void Window::ShowWindow(bool visible) {
+        if(visible){
+            glfwShowWindow(glfwWindow);
+        }else{
+            glfwHideWindow(glfwWindow);
+        }
+    }
+
+    void Window::SetToCenter() {
+        //set window to center
+        GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+        if(mode){
+            int mW=mode->width,mH=mode->height;
+            WX_CORE_INFO("Monitor Size {},{}",mW,mH);
+            glfwSetWindowPos(glfwWindow,(mW-width)/2,(mH-height)/2);
+        }
     }
 }

@@ -103,4 +103,11 @@ namespace wx {
             return nullptr;
         }
     }
+
+    const FileInfo &AssetsLoader::fileInfo(const char *name) {
+        string filepath = string(root).append(FILE_SPLITER).append(name);
+        path dir(filepath);
+        WX_CORE_INFO("FileInfo {}",dir.string());
+        return info[filepath];
+    }
 }

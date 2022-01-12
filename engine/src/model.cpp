@@ -127,6 +127,7 @@ namespace wx {
                 int byte_size = bufferView->byteLength;
 
                 mesh.indices_count = data_count;
+                mesh.indices_type = indices_accessor->componentType;
 
                 uint32_t ebo = 0 ;
                 glGenBuffers(1,&ebo);
@@ -205,7 +206,6 @@ namespace wx {
 
             glBindVertexArray(0);
 
-            mesh.material.albedo = vec4(1.0f);
             if(primitive.material>-1){
                 Material* cmat = &cmodel->materials[primitive.material];
                 TextureInfo baseColorTextureInfo = cmat->pbrMetallicRoughness.baseColorTexture;
@@ -244,9 +244,9 @@ namespace wx {
                     mesh.material.metallic_roughness_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
                 }
 
-                mesh.material.albedo = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
-                mesh.material.metallic = cmat->pbrMetallicRoughness.metallicFactor;
-                mesh.material.roughness = cmat->pbrMetallicRoughness.roughnessFactor;
+                mesh.material.albedo_factor = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
+                mesh.material.metallic_factor = cmat->pbrMetallicRoughness.metallicFactor;
+                mesh.material.roughness_factor = cmat->pbrMetallicRoughness.roughnessFactor;
             }
 
             model->primitives.push_back(mesh);
@@ -310,6 +310,13 @@ namespace wx {
 
         auto spatial = level_get_component<Spatial3d>(scene,node_entity);
         spatial->parent = parent;
+        auto transform = level_get_component<Transform>(scene,node_entity);
+
+        if(parent>0){
+            auto parent_transform = level_get_component<Transform>(scene,parent);
+            transform->parent = parent_transform;
+            transform->has_parent = 1;
+        }
 
         if(cnode.mesh!=-1){
             std::cout << "node mesh : " << cnode.mesh << std::endl;
@@ -351,7 +358,9 @@ namespace wx {
         return node_entity;
     }
 
-    ::entity_id Assets::LoadAnimateModel(level* scene,const char *filename) {
+    ::entity_id Assets::LoadAnimateModel(level* scene,const char *filename
+                                         ,const char *name
+                                         ,const Transform& transform) {
         using namespace tinygltf;
 
         Model cmodel;
@@ -359,15 +368,22 @@ namespace wx {
         std::string err;
         std::string warn;
 
-        bool ret = loader.LoadASCIIFromFile(&cmodel, &err, &warn, filename);
-//bool ret = loader.LoadBinaryFromFile(&model, &err, &warn, argv[1]); // for binary glTF(.glb)
+        bool ret = false;
+        int len = 0;
+        const FileInfo& fileInfo = AssetsLoader::FileInfo(filename);
+        auto bytes = AssetsLoader::LoadRawData(filename, &len);
+        if(fileInfo.ext=="glb"){
+            ret = loader.LoadBinaryFromMemory(&cmodel,&err,&warn,bytes,fileInfo.size,"data");
+        } else if(fileInfo.ext=="gltf"){
+            ret = loader.LoadASCIIFromString(&cmodel, &err, &warn, reinterpret_cast<const char *>(bytes), len, "data");
+        }
 
         if (!warn.empty()) {
-            WX_CORE_WARN("Warn: {}",warn);
+            WX_CORE_WARN("tinyglft Warn: {}",warn);
         }
 
         if (!err.empty()) {
-            WX_CORE_ERROR("Err: {}",err);
+            WX_CORE_ERROR("tinyglft Err: {}",err);
         }
 
         if (!ret) {
@@ -391,7 +407,7 @@ namespace wx {
             root = create_entity(scene);
             auto root_spatial = level_add_component(scene,root,Spatial3d{});
             root_spatial->name = cscene->name;
-            level_add_component(scene,root,Transform{});
+            level_add_component(scene,root,transform);
 
             for (auto idx : cscene->nodes) {
                 auto child = get_node(scene,&cmodel, root,idx,nodes);
@@ -399,6 +415,10 @@ namespace wx {
             }
         }else if(cscene->nodes.size()==1){
             root = get_node(scene,&cmodel, 0,cscene->nodes[0],nodes);
+            auto root_transform = level_get_component<Transform>(scene,root);
+            root_transform->position = transform.position;
+            root_transform->rotation = transform.rotation;
+            root_transform->scale = transform.scale;
         }else{
             WX_CORE_ERROR("Can't find any object!");
             return 0;

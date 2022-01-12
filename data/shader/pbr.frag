@@ -1,5 +1,5 @@
 #version 430 core
-const float PI = 3.1415926;
+const float PI = 3.141592653589793;
 
 #define POINT_LIGHT 0
 #define SPOT_LIGHT 1
@@ -42,17 +42,19 @@ uniform Light lights[20];
 uniform vec3 cameraPos;
 
 //反射颜色 - 可以换成贴图需要从sRGB 转换到 linerRGB
-uniform vec4  albedo;
+uniform vec4  albedo_factor;
 uniform int has_albedo_texture;
 uniform sampler2D albedo_texture;
 //金属度 可以换成贴图
-uniform float metallic;
+uniform float metallic_factor;
 //粗糙度 可以换成贴图
-uniform float roughness;
+uniform float roughness_factor;
 uniform int has_metallic_roughness_texture;
 uniform sampler2D metallic_roughness_texture;
 //环境光遮蔽 - 可以换成贴图需要从sRGB 转换到 linerRGB
-uniform float ao;
+uniform float ao_factor;
+uniform int has_ao_texture;
+uniform sampler2D ao_texture;
 
 //平行光阴影贴图
 uniform sampler2D shadowMap[5];
@@ -91,12 +93,18 @@ float GeometrySchlickGGX(float NdotV, float roughness)
 
     return nom / denom;
 }
+
+// Schlick-GGX approximation of geometric attenuation function using Smith's method.
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+    float r = roughness+1.0;
+    float k = (r*r)/8.0;// Epic suggests using this roughness remapping for analytic lights.
+
+    float ggx2  = GeometrySchlickGGX(NdotV, k);
+    float ggx1  = GeometrySchlickGGX(NdotL, k);
 
     return ggx1 * ggx2;
 }
@@ -247,24 +255,25 @@ float CalcPointLightShadow(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,floa
 }
 
 void main(){
-    vec4 albedo_factor = albedo;
+    vec4 albedo = albedo_factor;
     if(has_albedo_texture==1){
         vec4 c = texture(albedo_texture,v_TexCoord);
-        albedo_factor = vec4(pow(c.rgb,vec3(2.2)),c.a);
+        albedo = vec4(pow(c.rgb,vec3(2.2)),c.a);
     }
 
-    float metallic_factor = metallic;
-    float roughness_factor = roughness;
+    float metallic = metallic_factor;
+    float roughness = roughness_factor;
     if(has_metallic_roughness_texture==1){
         vec2 mr = texture(metallic_roughness_texture,v_TexCoord).bg;
-        metallic_factor = mr.x;
-        roughness_factor = mr.y;
+        metallic = mr.x;
+        roughness = mr.y;
     }
 
     vec3 N = normalize(v_Normal);
     vec3 V = normalize(cameraPos - v_WorldPos); //出射光线
-
     vec3 Lo = vec3(0.0); //出射光线的辐射率
+    vec3 F0 = vec3(0.04);//非金属材质默认0.04
+    F0 = mix(F0,albedo.rgb,metallic);
 
     float shadow_factor = 1.0;
 
@@ -280,8 +289,9 @@ void main(){
 
         vec3 radiance = light.color * light.intensity;
 
-        float bias = max(0.003 * (1.0 - dot(v_Normal, L)), 0.001);//shadow bias
+        float bias = max(0.005 * (1.0 - dot(v_Normal, L)), 0.005);//shadow bias
 
+        //计算阴影
         if(light.type==POINT_LIGHT){
             float distance = length(light.position - v_WorldPos);
 
@@ -320,33 +330,28 @@ void main(){
             radiance *= 1 - shadow;
         }
 
-        vec3 F0 = vec3(0.04);//非金属材质默认0.04
-        F0 = mix(F0,albedo_factor.rgb,metallic_factor);
+        // Calculate Fresnel term for direct lighting.
         vec3 F = fresnelSchlick(max(dot(H,V),0.0),F0);
-
-        float NDF = DistributionGGX(N,H,roughness_factor);
-        float G = GeometrySmith(V,L,H,roughness_factor);
-
-        vec3 nominator = NDF * G * F;
-        float demoinator = 4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0) + 0.001;//加0.001防止除零
-        vec3 specular = nominator/demoinator;
+        // Calculate normal distribution for specular BRDF.
+        float NDF = DistributionGGX(N,H,roughness);
+        // Calculate geometric attenuation for specular BRDF.
+        float G = GeometrySmith(V,L,H,roughness);
 
         vec3 kS = F; //光被反射的比例
-        vec3 kD = vec3(1.0) - kS;//光被折射的比例
-        kD *= 1.0 - metallic_factor;
+        vec3 kD = mix(vec3(1.0) - kS,vec3(0.f),metallic);//光被折射的比例
+        vec3 diffuseBRDF = kD * albedo.rgb;
+
+        vec3 specularBRDF = (NDF * G * F)/max(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0),0.00001);
 
         float NdotL = max(dot(N,L),0.0);
-        Lo += (kD*albedo_factor.rgb/PI + specular) * radiance * NdotL;
+        Lo += (diffuseBRDF + specularBRDF) * radiance * NdotL;
     }
-    // 计算阴影
 
-    vec3 ambient = vec3(0.03) * albedo_factor.rgb * ao;
+    vec3 ao = vec3(ao_factor);
+    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//LDR to HDR
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
 
     FragColor = vec4(color,1.0);
-
-//    float closestDepth = texture(shadowCubeMap[0], (v_WorldPos-lights[0].position)).r;
-//    FragColor = vec4(vec3(closestDepth / lights[0].far_plane), 1.0);
 }

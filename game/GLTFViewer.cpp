@@ -5,10 +5,79 @@
 #include <stb/stb_image.h>
 #include "GLTFViewer.h"
 
+using namespace glm;
+
+#include "systems.h"
+
 namespace wx {
 
-    void GLTFViewer_System(level* level,float delta){
+    void gltf_viewer_game(App* app){
+        app->InsertResource(WindowConfig{"我的游戏引擎 0.2.3",1920,1080});
+        WX_INFO("_1-------------------------------------");
+        wx::Canvas canvas{};
+        canvas.position = glm::vec2(0,0);
+        canvas.size = glm::vec2(100,100);
+        canvas.vao = wx::Assets::UnitQuad();
 
+        wx::Camera camera{};
+        camera.position = glm::vec3(0.0f,2.0f,10.0f);
+
+        wx::Light sun{};
+        sun.type = wx::Light::directional;
+        sun.color = vec3{1.0f};
+        sun.position = vec3(5.f,5.f,0.f);
+        sun.direction = normalize(-sun.position);
+        sun.intensity = 50;
+        sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
+        sun.has_shadow_map = 1;
+        sun.near_plane = -20.f;
+        sun.far_plane = 40.f;
+
+        sun.p = glm::ortho(-40.0f, 40.0f, -40.0f, 40.0f, sun.near_plane, sun.far_plane);;
+        sun.v = glm::lookAt(sun.position, vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+        app->Spawn(sun,CastShadow{},Sun{});
+        app->Spawn(canvas);
+        app->Spawn(camera,wx::MainCamera{});
+        quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
+        app->SpawnFromModel("model\\CesiumDrone.glb","Fly",Transform{.position=vec3(1.f,3.f,0.0f)});
+//        app->SpawnFromModel("model\\Plane.glb","Plane",Transform{.scale=vec3(20.f)});
+//        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
+//        app->SpawnFromModel("model\\Snake.gltf","Snake");
+        app->SpawnFromModel("model\\Scene.gltf","Scene");
+
+
+        app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
+        app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
+        WX_INFO("_run-------------------------------------");
+    }
+
+    void test_input_system(level* level,float delta){
+        auto inputState = level_get_share_resource<InputState>(level);
+
+        Light* sun = nullptr;
+        auto entities_iter = level->entities.begin();
+        auto entities_begin = level->entities.begin();
+
+        while (entities_iter != level->entities.end()){
+            uint32_t entity_idx = entities_iter-entities_begin;
+            entity_id entity = CREATE_ID((*entities_iter),entity_idx);
+            if(entity!=0 && level_has_components<Sun>(level,entity)){
+                sun = level_get_component<Light>(level,entity);
+            }
+//            if(entity!=0 && level_has_components<Mesh,Transform>(level,entity)){
+//                auto transform = level_get_component<Transform>(level,entity);
+//                transform->rotation *= quat(vec3(radians(1.f), radians(1.0f),0.f));
+//            }
+            entities_iter++;
+        }
+
+        if(inputState->GetKeyPressed(InputState::K)){
+            WX_INFO("Pressed K");
+            if(sun){
+                sun->state = sun->state==0?1:0;
+            }
+        }
     }
 
 //    void GLTFViewer::Init(Window *window) {
@@ -174,12 +243,14 @@ namespace wx {
 }
 
 int main(int argc,char** argv) {
+
     system("chcp 65001");
 
     wx::Log::Init();
+    wx::AssetsLoader::Init();
+
     WX_INFO("我的游戏引擎 0.2");
     auto* app = new wx::App();
-    app->InsertResource(wx::WindowConfig{"我的游戏引擎 0.2.3", 1280, 720, true});
-
+    app->AddPlugin(SYSTEM_NAME(wx::gltf_viewer_game),wx::gltf_viewer_game);
     app->Run();
 }

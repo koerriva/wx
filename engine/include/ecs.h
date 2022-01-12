@@ -83,8 +83,9 @@ namespace wx {
             uint8_t entity_generation = GET_GENERATION(entity);
             generational_ptr component_pointer = entity_to_component[entity_index];
             if (component_pointer.generation != entity_generation) {
-                WX_CORE_ERROR("[zel_component class] get component return nullptr | Entity: {} | Type: {}", entity,
+                WX_CORE_ERROR("[component class] get component return nullptr | Entity: {} | Type: {}", entity,
                        typeid(T).name());
+                exit(-10004);
                 return nullptr;
             }
             uint32_t component_index = GET_INDEX(component_pointer.id);
@@ -165,6 +166,8 @@ namespace wx {
 
     typedef void(*system_t)(_level *level, float delta_time);
 
+    typedef void(*plugin_t)(class App* app);
+
     struct level {
         //components
         std::unordered_map<std::string, ComponentBase *> components;
@@ -218,7 +221,9 @@ namespace wx {
     T* level_add_component(level * level, entity_id entity,T component){
         auto type_name = std::string(typeid(T).name());
         auto *component_type = (Component<T> *) (level->components[type_name]);
-
+        if(component_type== nullptr){
+            WX_CORE_CRITICAL("Can't find component type : {}",type_name);
+        }
         return component_type->create(entity, component);
     }
 
@@ -226,7 +231,6 @@ namespace wx {
     T *level_get_component(level * level, entity_id entity){
         auto type_name = std::string(typeid(T).name());
         auto *component_type = (Component<T> *) (level->components[type_name]);
-        if(component_type== nullptr)return nullptr;
         return component_type->get_component(entity);
     }
 

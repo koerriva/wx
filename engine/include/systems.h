@@ -9,6 +9,8 @@
 #include "components.h"
 
 namespace wx {
+    void context_setup_system(level* level,float delta);
+
     //Window
     void window_update_system(level* level,float delta);
     //Input

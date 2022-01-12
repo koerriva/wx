@@ -29,6 +29,7 @@ namespace wx {
     }
 
     void third_person_camera_controller_system(level* level,float delta){
+        auto window = level_get_share_resource<Window>(level);
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
         while (entities_iter != level->entities.end()){
@@ -44,23 +45,24 @@ namespace wx {
 
                 //MoveForward
                 if(inputState->GetKeyDown(InputState::KeyCode::W)){
-                    camera->position += 1.f * camera->front;
+                    camera->position += 1.f * camera->front * delta;
                 }
                 if(inputState->GetKeyDown(InputState::KeyCode::S)){
-                    camera->position += -1.f * camera->front;
+                    camera->position += -1.f * camera->front * delta;
                 }
                 //MoveRight
                 if(inputState->GetKeyDown(InputState::KeyCode::D)){
-                    camera->position += 1.f * normalize(cross(camera->front, camera->up));
+                    camera->position += 1.f * normalize(cross(camera->front, camera->up)) * delta;
                 }
                 if(inputState->GetKeyDown(InputState::KeyCode::A)){
-                    camera->position += -1.f * normalize(cross(camera->front, camera->up));
+                    camera->position += -1.f * normalize(cross(camera->front, camera->up)) * delta;
                 }
                 //Rotation
                 vec2 direction{0};
                 if(inputState->GetMouseButtonPressed(InputState::MouseCode::M_RIGHT)){
+                    window->ShowCursor(false);
                     direction = inputState->GetCursorOffset();
-                    camera->yaw -= direction.x;
+                    camera->yaw += direction.x;
                     camera->pitch -= direction.y;
                     camera->pitch = glm::clamp(camera->pitch, -89.0f, 89.f);
                     glm::vec3 _front;
@@ -68,6 +70,8 @@ namespace wx {
                     _front.y = sin(glm::radians(camera->pitch));
                     _front.z = cos(glm::radians(camera->pitch)) * sin(glm::radians(camera->yaw));
                     camera->front = glm::normalize(_front);
+                }else{
+                    window->ShowCursor(true);
                 }
             }
             entities_iter++;

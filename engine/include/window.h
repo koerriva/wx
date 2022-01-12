@@ -20,17 +20,24 @@ namespace wx {
         int height = 480;
         float aspect = 4.0/3.0;
         bool vsync = true;
-        string title;
+        string title = "Meta Engine";
         bool closed = false;
         GLFWwindow* glfwWindow = nullptr;
         float widthScale=1.0f,heightScale=1.0f;
 
     public:
+        Window();
         Window(string title,int width,int height,bool vsync);
         ~Window();
 
         void Init();
         void Update();
+
+        void SetWindowTitle(const char* name);
+        void SetWindowSize(int width,int height);
+        void SetVSync(bool vSync);
+        void ShowWindow(bool visible);
+        void SetToCenter();
 
         [[nodiscard]] bool Closed() const {
             return closed;

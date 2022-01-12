@@ -33,6 +33,7 @@ namespace wx {
 
     struct Transform {
         Transform* parent = nullptr;
+        int has_parent = 0;
         vec3 position{0.0f};
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
@@ -46,7 +47,7 @@ namespace wx {
 
         [[nodiscard]] mat4 GetGlobalTransform() const {
             mat4 local = GetLocalTransform();
-            if(parent){
+            if(has_parent){
                 return parent->GetGlobalTransform()*local;
             }else{
                 return local;
@@ -56,6 +57,7 @@ namespace wx {
 
     struct AnimatedTransform {
         Transform* parent = nullptr;
+        int has_parent = 0;
         vec3 position{0.0f};
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
@@ -69,7 +71,7 @@ namespace wx {
 
         [[nodiscard]] mat4 GetGlobalTransform() const {
             mat4 local = GetLocalTransform();
-            if(parent){
+            if(has_parent){
                 return parent->GetGlobalTransform()*local;
             }else{
                 return local;
@@ -78,12 +80,12 @@ namespace wx {
     };
 
     typedef struct material_t {
-        vec4 albedo{1.f};
+        vec4 albedo_factor{1.f};
         int has_albedo_texture = 0;
         uint32_t albedo_texture;
         int albedo_texture_index = 0;
-        float metallic = 1.0;
-        float roughness = 1.0;
+        float metallic_factor = 0.001;
+        float roughness_factor = 0.001;
         float ao = 1.0;
         int has_metallic_roughness_texture = 0;
         uint32_t metallic_roughness_texture;
@@ -241,11 +243,11 @@ namespace wx {
 
         enum MouseCode {
             M_LEFT = 0,
-            M_RIGHT,M_MID
+            M_RIGHT = 1,M_MID=2
         };
 
         enum KeyState{
-            RELEASE=0,PRESS,REPEAT
+            RELEASE=0,PRESS,REPEAT,//GLFW_PRESS=1,GLFW_RELEASE=0
         };
 
         int last_key_state[349] = {0};
@@ -270,7 +272,7 @@ namespace wx {
         }
 
         bool GetMouseButtonPressed(int btn) {
-            return last_button_state[btn]==PRESS&&curr_button_state[RELEASE];
+            return curr_button_state[btn]==PRESS;
         }
 
         [[nodiscard]] vec2 GetCursorOffset() const{

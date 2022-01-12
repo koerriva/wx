@@ -7,59 +7,7 @@
 #include "font.h"
 
 namespace wx {
-    App::App() {
-        level = level_create();
-
-        level_register_component<Camera>(level);
-        level_register_component<MainCamera>(level);
-        level_register_component<Transform>(level);
-        level_register_component<AnimatedTransform>(level);
-        level_register_component<CastShadow>(level);
-        level_register_component<ReceiveShadow>(level);
-        level_register_component<Light>(level);
-        level_register_component<Joint>(level);
-        level_register_component<Mesh>(level);
-        level_register_component<Canvas>(level);
-        level_register_component<Spatial3d>(level);
-
-        engine_components.emplace_back(typeid(Camera).name());
-        engine_components.emplace_back(typeid(MainCamera).name());
-        engine_components.emplace_back(typeid(Transform).name());
-        engine_components.emplace_back(typeid(AnimatedTransform).name());
-        engine_components.emplace_back(typeid(CastShadow).name());
-        engine_components.emplace_back(typeid(ReceiveShadow).name());
-        engine_components.emplace_back(typeid(Light).name());
-        engine_components.emplace_back(typeid(Joint).name());
-        engine_components.emplace_back(typeid(Mesh).name());
-        engine_components.emplace_back(typeid(Canvas).name());
-        engine_components.emplace_back(typeid(Spatial3d).name());
-
-        level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
-        level_register_system(level,input_update_system, SYSTEM_NAME(input_update_system));
-        level_register_system(level,camera_update_system, SYSTEM_NAME(camera_update_system));
-        level_register_system(level,render_update_system, SYSTEM_NAME(render_update_system));
-
-        engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
-        engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
-        engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
-        engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
-    }
-
-    App& App::Setup(){
-        auto windowConfig = level_get_share_resource<WindowConfig>(level);
-        if(windowConfig == nullptr){
-            level_insert_share_resource(level,WindowConfig{"",1280,720,true});
-            windowConfig = level_get_share_resource<WindowConfig>(level);
-        }
-        level_insert_share_resource(level, Window{windowConfig->title,
-                                                  windowConfig->width,windowConfig->height,
-                                                  windowConfig->vSync});
-        auto window = level_get_share_resource<Window>(level);
-        window->Init();
-
-        AssetsLoader::Init();
-        Font::Init();
-
+    void context_setup_system(level* level,float delta){
         level_insert_share_resource(level,VPMatrices{});
         level_insert_share_resource(level,FrameState{});
         level_insert_share_resource(level,InputState{});
@@ -74,8 +22,53 @@ namespace wx {
         level_insert_share_resource(level,DepthShader{depthShader});
         uint32_t depthCubeShader = ShaderProgram::LoadShader("depth_cube", true);
         level_insert_share_resource(level,DepthCubeShader{depthCubeShader});
+    }
 
-        return *this;
+    App::App() {
+        level = level_create();
+
+        level_register_component<Camera>(level);
+        level_register_component<MainCamera>(level);
+        level_register_component<Transform>(level);
+        level_register_component<AnimatedTransform>(level);
+        level_register_component<CastShadow>(level);
+        level_register_component<ReceiveShadow>(level);
+        level_register_component<Light>(level);
+        level_register_component<Joint>(level);
+        level_register_component<Skin>(level);
+        level_register_component<Mesh>(level);
+        level_register_component<Canvas>(level);
+        level_register_component<Spatial3d>(level);
+
+        engine_components.emplace_back(typeid(Camera).name());
+        engine_components.emplace_back(typeid(MainCamera).name());
+        engine_components.emplace_back(typeid(Transform).name());
+        engine_components.emplace_back(typeid(AnimatedTransform).name());
+        engine_components.emplace_back(typeid(CastShadow).name());
+        engine_components.emplace_back(typeid(ReceiveShadow).name());
+        engine_components.emplace_back(typeid(Light).name());
+        engine_components.emplace_back(typeid(Joint).name());
+        engine_components.emplace_back(typeid(Skin).name());
+        engine_components.emplace_back(typeid(Mesh).name());
+        engine_components.emplace_back(typeid(Canvas).name());
+        engine_components.emplace_back(typeid(Spatial3d).name());
+
+        level_register_system(level,context_setup_system, SYSTEM_NAME(context_setup_system));
+        level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
+        level_register_system(level,input_update_system, SYSTEM_NAME(input_update_system));
+        level_register_system(level,camera_update_system, SYSTEM_NAME(camera_update_system));
+        level_register_system(level,render_update_system, SYSTEM_NAME(render_update_system));
+
+        engine_startup_systems.emplace_back(SYSTEM_NAME(context_setup_system));
+        engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
+
+        level_insert_share_resource(level,Window{});
+        auto window = level_get_share_resource<Window>(level);
+        window->Init();
+        Font::Init();
     }
 
     App& App::AddSystem(const char* name,system_t system) {
@@ -84,8 +77,28 @@ namespace wx {
         return *this;
     }
 
+    App &App::AddStartupSystem(const char* name,system_t system) {
+        level_register_system(level,system,name);
+        game_startup_systems.emplace_back(name);
+        return *this;
+    }
+
+    App& App::AddPlugin(const char *name, plugin_t plugin) {
+        game_plugins.emplace_back(name);
+        plugin(this);
+        return *this;
+    }
+
     void App::Run() {
         auto window = level_get_share_resource<Window>(level);
+        auto windowConfig = level_get_share_resource<WindowConfig>(level);
+        if(windowConfig){
+            window->SetWindowTitle(windowConfig->title.c_str());
+            window->SetWindowSize(windowConfig->width,windowConfig->height);
+            window->SetVSync(windowConfig->vSync);
+            window->SetToCenter();
+        }
+        window->ShowWindow(true);
 
         auto sync_timer = new Timer;
         sync_timer->Init();
@@ -101,6 +114,14 @@ namespace wx {
                 now = Timer::GetTime();
             }
         };
+
+        for (auto& startup_system:engine_startup_systems) {
+            level->systems[startup_system](level,0.0);
+        }
+
+        for (auto& startup_system:game_startup_systems){
+            level->systems[startup_system](level,0.0);
+        }
 
         while (!window->Closed()){
             float frameTime = frame_timer->GetElapsedTime();
@@ -118,7 +139,6 @@ namespace wx {
             }
         }
 
-        AssetsLoader::Cleanup();
         Font::Cleanup();
     }
 

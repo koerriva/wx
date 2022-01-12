@@ -17,6 +17,9 @@ namespace wx {
         bool debug_light_switch = false;
         bool hideCursor = false;
     };
+
+    struct Sun{};
+    void test_input_system(level* level,float delta);
 }
 
 
