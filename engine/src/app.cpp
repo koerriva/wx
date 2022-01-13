@@ -57,12 +57,16 @@ namespace wx {
         level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
         level_register_system(level,input_update_system, SYSTEM_NAME(input_update_system));
         level_register_system(level,camera_update_system, SYSTEM_NAME(camera_update_system));
+        level_register_system(level,spatial_update_system, SYSTEM_NAME(spatial_update_system));
         level_register_system(level,render_update_system, SYSTEM_NAME(render_update_system));
 
         engine_startup_systems.emplace_back(SYSTEM_NAME(context_setup_system));
+        engine_startup_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
+
         engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
 
         level_insert_share_resource(level,Window{});

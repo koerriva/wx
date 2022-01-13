@@ -33,6 +33,33 @@ namespace wx {
         matrix->ortho = ortho(0.f,float(window->GetWidth()),float(window->GetHeight()),0.f);
     }
 
+    void spatial_update_system(level* level,float delta){
+        auto entities_iter = level->entities.begin();
+        auto entities_begin = level->entities.begin();
+        while (entities_iter != level->entities.end()){
+            uint32_t entity_idx = entities_iter-entities_begin;
+            entity_id entity = CREATE_ID((*entities_iter),entity_idx);
+            if(entity!=0 && level_has_components<Spatial3d>(level,entity)){
+                auto spatial = level_get_component<Spatial3d>(level,entity);
+                if(level_has_components<Transform>(level,entity)){
+                    auto transform = level_get_component<Transform>(level,entity);
+                    if(spatial->parent>0){
+                        transform->has_parent = 1;
+                        transform->parent = level_get_component<Transform>(level,spatial->parent);
+                    }
+                }
+                if(level_has_components<AnimatedTransform>(level,entity)){
+                    auto transform = level_get_component<AnimatedTransform>(level,entity);
+                    if(spatial->parent>0){
+                        transform->has_parent = 1;
+                        transform->parent = level_get_component<AnimatedTransform>(level,spatial->parent);
+                    }
+                }
+            }
+            entities_iter++;
+        }
+    }
+
     std::vector<::entity_id> models(1024);
     std::vector<::entity_id> lights(124);
     std::vector<::entity_id> ui(128);
@@ -132,7 +159,7 @@ namespace wx {
             for (auto& model_entity:models) {
                 auto transform = level_get_component<Transform>(level,model_entity);
                 auto mesh= level_get_component<Mesh>(level,model_entity);
-                mat4 M = transform->GetGlobalTransform();
+                mat4 M = transform->GetGlobalMatrix();
 
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
                 auto has_skin = level_has_components<Skin>(level,model_entity);
@@ -142,7 +169,7 @@ namespace wx {
                     ShaderProgram::SetInt(shaderProgram,"use_skin",0);
                     for (int i = 0; i < skin->joints_count; ++i) {
                         mat4 inverse_matrices = skin->inverse_bind_matrices[i];
-                        mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
+                        mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalMatrix();
                         joint_matrices = joint_matrices * inverse_matrices;
                         ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                     }
@@ -231,7 +258,7 @@ namespace wx {
         for (auto& model_entity:models) {
             auto transform = level_get_component<Transform>(level,model_entity);
             auto mesh= level_get_component<Mesh>(level,model_entity);
-            mat4 M = transform->GetGlobalTransform();
+            mat4 M = transform->GetGlobalMatrix();
             ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
             auto has_skin = level_has_components<Skin>(level,model_entity);
             ShaderProgram::SetInt(shaderProgram,"use_skin",has_skin);
@@ -239,7 +266,7 @@ namespace wx {
                 auto skin = level_get_component<Skin>(level,model_entity);
                 for (int i = 0; i < skin->joints_count; ++i) {
                     mat4 inverse_matrices = skin->inverse_bind_matrices[i];
-                    mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalTransform();
+                    mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalMatrix();
                     joint_matrices = joint_matrices * inverse_matrices;
                     ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                 }

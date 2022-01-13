@@ -312,12 +312,6 @@ namespace wx {
         spatial->parent = parent;
         auto transform = level_get_component<Transform>(scene,node_entity);
 
-        if(parent>0){
-            auto parent_transform = level_get_component<Transform>(scene,parent);
-            transform->parent = parent_transform;
-            transform->has_parent = 1;
-        }
-
         if(cnode.mesh!=-1){
             std::cout << "node mesh : " << cnode.mesh << std::endl;
             get_model_component(scene,cmodel,node_entity,cnode.mesh);

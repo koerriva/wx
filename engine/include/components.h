@@ -38,17 +38,17 @@ namespace wx {
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
 
-        [[nodiscard]] mat4 GetLocalTransform() const {
+        [[nodiscard]] mat4 GetLocalMatrix() const {
             mat4 T = translate(mat4{1.0f},position);
             mat4 R = mat4_cast(rotation);
             mat4 S = glm::scale(mat4{1.0f},scale);
             return T*R*S;
         }
 
-        [[nodiscard]] mat4 GetGlobalTransform() const {
-            mat4 local = GetLocalTransform();
+        [[nodiscard]] mat4 GetGlobalMatrix() const {
+            mat4 local = GetLocalMatrix();
             if(has_parent){
-                return parent->GetGlobalTransform()*local;
+                return parent->GetGlobalMatrix()*local;
             }else{
                 return local;
             }
@@ -56,23 +56,23 @@ namespace wx {
     };
 
     struct AnimatedTransform {
-        Transform* parent = nullptr;
+        AnimatedTransform* parent = nullptr;
         int has_parent = 0;
         vec3 position{0.0f};
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
 
-        [[nodiscard]] mat4 GetLocalTransform() const {
+        [[nodiscard]] mat4 GetLocalMatrix() const {
             mat4 T = translate(mat4{1.0f},position);
             mat4 R = mat4_cast(rotation);
             mat4 S = glm::scale(mat4{1.0f},scale);
             return T*R*S;
         }
 
-        [[nodiscard]] mat4 GetGlobalTransform() const {
-            mat4 local = GetLocalTransform();
+        [[nodiscard]] mat4 GetGlobalMatrix() const {
+            mat4 local = GetLocalMatrix();
             if(has_parent){
-                return parent->GetGlobalTransform()*local;
+                return parent->GetGlobalMatrix()*local;
             }else{
                 return local;
             }
@@ -85,7 +85,7 @@ namespace wx {
         uint32_t albedo_texture;
         int albedo_texture_index = 0;
         float metallic_factor = 0.001;
-        float roughness_factor = 0.001;
+        float roughness_factor = 0.999;
         float ao = 1.0;
         int has_metallic_roughness_texture = 0;
         uint32_t metallic_roughness_texture;

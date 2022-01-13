@@ -12,7 +12,7 @@ using namespace glm;
 namespace wx {
 
     void gltf_viewer_game(App* app){
-        app->InsertResource(WindowConfig{"Metaverse Engine 0.3.1",1920,1080});
+        app->InsertResource(WindowConfig{"Metaverse Engine 0.3.1",1440,900});
         WX_INFO("_1-------------------------------------");
         wx::Canvas canvas{};
         canvas.position = glm::vec2(0,0);
@@ -27,7 +27,7 @@ namespace wx {
         sun.color = vec3{1.0f};
         sun.position = vec3(5.f,5.f,0.f);
         sun.direction = normalize(-sun.position);
-        sun.intensity = 50;
+        sun.intensity = 10;
         sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
         sun.has_shadow_map = 1;
         sun.near_plane = -20.f;
@@ -40,10 +40,10 @@ namespace wx {
         app->Spawn(canvas);
         app->Spawn(camera,wx::MainCamera{});
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-        app->SpawnFromModel("model\\CesiumDrone.glb","Fly",Transform{.position=vec3(1.f,3.f,0.0f)});
+        app->SpawnFromModel("model\\CesiumDrone.glb","Fly",Transform{.position=vec3(0.f,5.f,0.0f)});
 //        app->SpawnFromModel("model\\Plane.glb","Plane",Transform{.scale=vec3(20.f)});
-//        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-//        app->SpawnFromModel("model\\Snake.gltf","Snake");
+        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
+        app->SpawnFromModel("model\\Snake.gltf","Snake",Transform{.position=vec3(0.f,0.f,3.f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
 
 
