@@ -40,10 +40,10 @@ namespace wx {
             glfwWindowHint(GLFW_SAMPLES,4);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+            glfwWindowHint(GLFW_VISIBLE,GL_FALSE);
 #ifdef __APPLE__
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-
             glfwWindow = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
             if(!glfwWindow){
                 glfwTerminate();
@@ -81,8 +81,6 @@ namespace wx {
             if(vsync){
                 glfwSwapInterval(1);
             }
-
-            glfwHideWindow(glfwWindow);
         }
     }
 

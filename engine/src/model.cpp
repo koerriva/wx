@@ -400,7 +400,7 @@ namespace wx {
         if(cscene->nodes.size()>1){
             root = create_entity(scene);
             auto root_spatial = level_add_component(scene,root,Spatial3d{});
-            root_spatial->name = cscene->name;
+            root_spatial->name = name;
             level_add_component(scene,root,transform);
 
             for (auto idx : cscene->nodes) {
@@ -409,6 +409,10 @@ namespace wx {
             }
         }else if(cscene->nodes.size()==1){
             root = get_node(scene,&cmodel, 0,cscene->nodes[0],nodes);
+            if(strcmp(name,"")!=0){
+                auto root_spatial = level_get_component<Spatial3d>(scene,root);
+                root_spatial->name = name;
+            }
             auto root_transform = level_get_component<Transform>(scene,root);
             root_transform->position = transform.position;
             root_transform->rotation = transform.rotation;
@@ -420,6 +424,7 @@ namespace wx {
 
         if(!cmodel.animations.empty()){
             auto root_spatial = level_get_component<Spatial3d>(scene,root);
+            auto root_animator = level_add_component(scene,root,Animator{});
 
             for (auto& canimation:cmodel.animations) {
                 std::cout << "Animation : " << canimation.name << std::endl;
@@ -477,7 +482,7 @@ namespace wx {
                     }
                 }
 
-                root_spatial->animations.push_back(anim);
+                root_animator->animations.push_back(anim);
             }
         }
         return root;

@@ -20,9 +20,11 @@ namespace wx {
     //render
     void spatial_update_system(level* level,float delta);
     void render_update_system(level* level,float delta);
-    void render_shadow_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights);
-    void render_mesh_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,::entity_id camera);
-    void render_ui_phase(level* level,float delta,const vector<::entity_id>& items);
+    void render_shadow_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights);
+    void render_mesh_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights,::entity_id camera);
+    void render_ui_phase(level* level,float delta,const std::vector<::entity_id>& items);
+    //animation
+    void animator_update_system(level* level,float delta);
 
     //Application
     void third_person_camera_controller_system(level* level,float delta);

@@ -85,7 +85,6 @@ namespace wx {
             if (component_pointer.generation != entity_generation) {
                 WX_CORE_ERROR("[component class] get component return nullptr | Entity: {} | Type: {}", entity,
                        typeid(T).name());
-                exit(-10004);
                 return nullptr;
             }
             uint32_t component_index = GET_INDEX(component_pointer.id);
@@ -95,12 +94,15 @@ namespace wx {
         void destroy(entity_id entity) override {
             uint32_t entity_to_destroy_index = GET_INDEX(entity);
             generational_ptr component_pointer = entity_to_component[entity_to_destroy_index];
-            if (component_pointer.generation != GET_GENERATION(entity_to_destroy_index)) {
+            if (component_pointer.generation != GET_GENERATION(entity)) {
                 WX_CORE_ERROR("Generation not equal, component already destroyed.");
+                exit(-10004);
                 return;
             }
             uint32_t component_to_destroy_index = GET_INDEX(component_pointer.id);
-            destroy_function(&components[component_to_destroy_index]);
+            if(destroy_function != nullptr){
+                destroy_function(&components[component_to_destroy_index]);
+            }
 
             if (component_to_destroy_index == last_component) {
                 component_to_entity[component_to_destroy_index].id = 0;
@@ -225,6 +227,16 @@ namespace wx {
             WX_CORE_CRITICAL("Can't find component type : {}",type_name);
         }
         return component_type->create(entity, component);
+    }
+
+    template<typename T>
+    void level_remove_component(level* level, entity_id entity){
+        auto type_name = std::string(typeid(T).name());
+        auto *component_type = (Component<T> *) (level->components[type_name]);
+        if(component_type== nullptr){
+            WX_CORE_CRITICAL("Can't find component type : {}",type_name);
+        }
+        return component_type->destroy(entity);
     }
 
     template<typename T>

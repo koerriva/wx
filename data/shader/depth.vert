@@ -18,7 +18,7 @@ void main(){
         weight.z * JointMat[int(joint.z)] +
         weight.w * JointMat[int(joint.w)];
 
-        model = SkinMat*M;
+        model = SkinMat;
     }
     gl_Position = PV*model*vec4(position, 1.0);
 }

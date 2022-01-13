@@ -33,6 +33,30 @@ namespace wx {
         matrix->ortho = ortho(0.f,float(window->GetWidth()),float(window->GetHeight()),0.f);
     }
 
+    mat4 calcGlobalMatrix(level* level,::entity_id entity){
+        auto spatial = level_get_component<Spatial3d>(level,entity);
+
+        if(spatial->parent>0){
+            if(level_has_components<AnimatedTransform>(level,entity)){
+                auto transform = level_get_component<AnimatedTransform>(level,entity);
+                return calcGlobalMatrix(level,spatial->parent)*transform->GetLocalMatrix();
+            }
+            if(level_has_components<Transform>(level,entity)){
+                auto transform = level_get_component<Transform>(level,entity);
+                return calcGlobalMatrix(level,spatial->parent)*transform->GetLocalMatrix();
+            }
+        }else{
+            if(level_has_components<AnimatedTransform>(level,entity)){
+                auto transform = level_get_component<AnimatedTransform>(level,entity);
+                return transform->GetLocalMatrix();
+            }
+            if(level_has_components<Transform>(level,entity)){
+                auto transform = level_get_component<Transform>(level,entity);
+                return transform->GetLocalMatrix();
+            }
+        }
+    }
+
     void spatial_update_system(level* level,float delta){
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
@@ -40,21 +64,7 @@ namespace wx {
             uint32_t entity_idx = entities_iter-entities_begin;
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
             if(entity!=0 && level_has_components<Spatial3d>(level,entity)){
-                auto spatial = level_get_component<Spatial3d>(level,entity);
-                if(level_has_components<Transform>(level,entity)){
-                    auto transform = level_get_component<Transform>(level,entity);
-                    if(spatial->parent>0){
-                        transform->has_parent = 1;
-                        transform->parent = level_get_component<Transform>(level,spatial->parent);
-                    }
-                }
-                if(level_has_components<AnimatedTransform>(level,entity)){
-                    auto transform = level_get_component<AnimatedTransform>(level,entity);
-                    if(spatial->parent>0){
-                        transform->has_parent = 1;
-                        transform->parent = level_get_component<AnimatedTransform>(level,spatial->parent);
-                    }
-                }
+
             }
             entities_iter++;
         }
@@ -101,7 +111,7 @@ namespace wx {
         frameState->total_count += 1;
     }
 
-    void render_shadow_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights){
+    void render_shadow_phase(level* level,float delta,vector<entity_id>& models,vector<entity_id>& lights){
         glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
         auto right_left_face_view = [](vec3 position,float dir)->mat4 {
             return lookAt(position, position + vec3(dir,0.0,0.0), vec3(0.0,-1.0,0.0));
@@ -157,19 +167,16 @@ namespace wx {
             }
 
             for (auto& model_entity:models) {
-                auto transform = level_get_component<Transform>(level,model_entity);
                 auto mesh= level_get_component<Mesh>(level,model_entity);
-                mat4 M = transform->GetGlobalMatrix();
-
+                mat4 M = calcGlobalMatrix(level,model_entity);
                 ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
                 auto has_skin = level_has_components<Skin>(level,model_entity);
                 ShaderProgram::SetInt(shaderProgram,"use_skin",has_skin);
                 if(has_skin){
                     auto skin = level_get_component<Skin>(level,model_entity);
-                    ShaderProgram::SetInt(shaderProgram,"use_skin",0);
                     for (int i = 0; i < skin->joints_count; ++i) {
                         mat4 inverse_matrices = skin->inverse_bind_matrices[i];
-                        mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalMatrix();
+                        mat4 joint_matrices = calcGlobalMatrix(level,skin->joints[i]);
                         joint_matrices = joint_matrices * inverse_matrices;
                         ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                     }
@@ -195,7 +202,7 @@ namespace wx {
         }
     }
 
-    void render_mesh_phase(level* level,float delta,vector<entity_id> models,vector<entity_id> lights,entity_id camera){
+    void render_mesh_phase(level* level,float delta,vector<entity_id>& models,vector<entity_id>& lights,entity_id camera){
         auto window = level_get_share_resource<Window>(level);
         auto vp = level_get_share_resource<VPMatrices>(level);
         auto pbrShader = level_get_share_resource<PBRShader>(level);
@@ -256,9 +263,8 @@ namespace wx {
         }
 
         for (auto& model_entity:models) {
-            auto transform = level_get_component<Transform>(level,model_entity);
             auto mesh= level_get_component<Mesh>(level,model_entity);
-            mat4 M = transform->GetGlobalMatrix();
+            mat4 M = calcGlobalMatrix(level,model_entity);
             ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
             auto has_skin = level_has_components<Skin>(level,model_entity);
             ShaderProgram::SetInt(shaderProgram,"use_skin",has_skin);
@@ -266,7 +272,7 @@ namespace wx {
                 auto skin = level_get_component<Skin>(level,model_entity);
                 for (int i = 0; i < skin->joints_count; ++i) {
                     mat4 inverse_matrices = skin->inverse_bind_matrices[i];
-                    mat4 joint_matrices = level_get_component<Transform>(level,skin->joints[i])->GetGlobalMatrix();
+                    mat4 joint_matrices = calcGlobalMatrix(level,skin->joints[i]);
                     joint_matrices = joint_matrices * inverse_matrices;
                     ShaderProgram::SetMat4(shaderProgram,"JointMat["+ to_string(i) + "]", value_ptr(joint_matrices));
                 }

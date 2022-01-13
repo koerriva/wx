@@ -32,8 +32,6 @@ namespace wx {
     };
 
     struct Transform {
-        Transform* parent = nullptr;
-        int has_parent = 0;
         vec3 position{0.0f};
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
@@ -45,19 +43,19 @@ namespace wx {
             return T*R*S;
         }
 
-        [[nodiscard]] mat4 GetGlobalMatrix() const {
-            mat4 local = GetLocalMatrix();
-            if(has_parent){
-                return parent->GetGlobalMatrix()*local;
-            }else{
-                return local;
-            }
-        }
+//        [[nodiscard]] mat4 GetGlobalMatrix() const {
+//            return matrix;
+//            mat4 local = GetLocalMatrix();
+//
+//            if(has_parent){
+//                return parent->GetGlobalMatrix()*local;
+//            }else{
+//                return local;
+//            }
+//        }
     };
 
     struct AnimatedTransform {
-        AnimatedTransform* parent = nullptr;
-        int has_parent = 0;
         vec3 position{0.0f};
         quat rotation{1.0f,0.0f,0.0f,0.0f};
         vec3 scale{1.0f};
@@ -69,13 +67,8 @@ namespace wx {
             return T*R*S;
         }
 
-        [[nodiscard]] mat4 GetGlobalMatrix() const {
-            mat4 local = GetLocalMatrix();
-            if(has_parent){
-                return parent->GetGlobalMatrix()*local;
-            }else{
-                return local;
-            }
+        static AnimatedTransform From(Transform *pTransform) {
+            return AnimatedTransform{.position=pTransform->position,.rotation=pTransform->rotation,.scale=pTransform->scale};
         }
     };
 
@@ -184,11 +177,52 @@ namespace wx {
         vec2 size{0};
     };
 
+    struct Animator {
+        enum State{
+            stop=0,play,pause
+        };
+        enum PlayState{
+            begin=0,playing,end
+        };
+        static const int MAX_ANIMATION_COUNT=20;
+        static const int MAX_CHANNEL_COUNT=10;
+        float currTime[MAX_ANIMATION_COUNT] = {0};
+        keyframe_t * prevFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
+        keyframe_t * nextFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
+
+        State state = stop;//0-stop,1-play,2-pause
+        PlayState playState = end;
+        bool loop = false;
+        std::string playingAnimation;
+        std::vector<animation_t> animations;
+
+        void Play(){
+            Play("");
+        }
+
+        void Play(const std::string& name,bool b_loop= true){
+            state = play;
+            playState = begin;
+            this->loop = b_loop;
+            playingAnimation = name;
+        }
+
+        void Pause(){
+            state=pause;
+        }
+
+        void Stop(){
+            state=stop;
+            playState = end;
+            this->loop = false;
+            playingAnimation = "";
+        }
+    };
+
     struct Spatial3d{
         std::string name;
         ::entity_id parent;
         std::vector<entity_id> children;
-        std::vector<animation_t> animations;
     };
 
     //resource

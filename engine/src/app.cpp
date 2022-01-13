@@ -38,6 +38,7 @@ namespace wx {
         level_register_component<Skin>(level);
         level_register_component<Mesh>(level);
         level_register_component<Canvas>(level);
+        level_register_component<Animator>(level);
         level_register_component<Spatial3d>(level);
 
         engine_components.emplace_back(typeid(Camera).name());
@@ -51,21 +52,25 @@ namespace wx {
         engine_components.emplace_back(typeid(Skin).name());
         engine_components.emplace_back(typeid(Mesh).name());
         engine_components.emplace_back(typeid(Canvas).name());
+        engine_components.emplace_back(typeid(Animator).name());
         engine_components.emplace_back(typeid(Spatial3d).name());
 
         level_register_system(level,context_setup_system, SYSTEM_NAME(context_setup_system));
         level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
         level_register_system(level,input_update_system, SYSTEM_NAME(input_update_system));
         level_register_system(level,camera_update_system, SYSTEM_NAME(camera_update_system));
+        level_register_system(level,animator_update_system, SYSTEM_NAME(animator_update_system));
         level_register_system(level,spatial_update_system, SYSTEM_NAME(spatial_update_system));
         level_register_system(level,render_update_system, SYSTEM_NAME(render_update_system));
 
         engine_startup_systems.emplace_back(SYSTEM_NAME(context_setup_system));
+        engine_startup_systems.emplace_back(SYSTEM_NAME(animator_update_system));
         engine_startup_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
 
         engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(animator_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
 

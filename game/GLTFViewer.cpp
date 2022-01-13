@@ -40,10 +40,10 @@ namespace wx {
         app->Spawn(canvas);
         app->Spawn(camera,wx::MainCamera{});
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-        app->SpawnFromModel("model\\CesiumDrone.glb","Fly",Transform{.position=vec3(0.f,5.f,0.0f)});
-//        app->SpawnFromModel("model\\Plane.glb","Plane",Transform{.scale=vec3(20.f)});
-        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-        app->SpawnFromModel("model\\Snake.gltf","Snake",Transform{.position=vec3(0.f,0.f,3.f)});
+        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+//        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
+//        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
+        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
 
 
@@ -56,6 +56,9 @@ namespace wx {
         auto inputState = level_get_share_resource<InputState>(level);
 
         Light* sun = nullptr;
+        Animator* snake_animator = nullptr;
+        Animator* fly_animator = nullptr;
+
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
 
@@ -64,6 +67,16 @@ namespace wx {
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
             if(entity!=0 && level_has_components<Sun>(level,entity)){
                 sun = level_get_component<Light>(level,entity);
+            }
+            if(entity!=0 && level_has_components<Spatial3d,Animator>(level,entity)){
+                auto spatial = level_get_component<Spatial3d>(level,entity);
+                auto animator = level_get_component<Animator>(level,entity);
+                if(spatial->name=="Snake01"){
+                    snake_animator = animator;
+                }
+                if(spatial->name=="Fly01"){
+                    fly_animator = animator;
+                }
             }
 //            if(entity!=0 && level_has_components<Mesh,Transform>(level,entity)){
 //                auto transform = level_get_component<Transform>(level,entity);
@@ -76,6 +89,40 @@ namespace wx {
             WX_INFO("Pressed K");
             if(sun){
                 sun->state = sun->state==0?1:0;
+            }
+        }
+
+        if(inputState->GetKeyPressed(InputState::P)){
+            WX_INFO("Pressed P");
+            if(snake_animator){
+                if(snake_animator->state!=Animator::play){
+                    WX_INFO("Play Snake Animation");
+                    snake_animator->Play();
+                }else{
+                    WX_INFO("Pause Snake Animation");
+                    snake_animator->Pause();
+                }
+            }
+            if(fly_animator){
+                if(fly_animator->state!=Animator::play){
+                    WX_INFO("Play Fly Animation");
+                    fly_animator->Play();
+                }else{
+                    WX_INFO("Pause Fly Animation");
+                    fly_animator->Pause();
+                }
+            }
+        }
+
+        if(inputState->GetKeyPressed(InputState::L)){
+            WX_INFO("Pressed S");
+            if(snake_animator){
+                WX_INFO("Stop Snake Animation");
+                snake_animator->Stop();
+            }
+            if(fly_animator){
+                WX_INFO("Stop Fly Animation");
+                fly_animator->Stop();
             }
         }
     }
