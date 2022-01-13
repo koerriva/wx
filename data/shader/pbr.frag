@@ -86,7 +86,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
+    float k = (r*r) / 8.0;// Epic suggests using this roughness remapping for analytic lights.
 
     float nom   = NdotV;
     float denom = NdotV * (1.0 - k) + k;
@@ -99,12 +99,8 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-
-    float r = roughness+1.0;
-    float k = (r*r)/8.0;// Epic suggests using this roughness remapping for analytic lights.
-
-    float ggx2  = GeometrySchlickGGX(NdotV, k);
-    float ggx1  = GeometrySchlickGGX(NdotL, k);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
 
     return ggx1 * ggx2;
 }
@@ -338,13 +334,14 @@ void main(){
         float G = GeometrySmith(V,L,H,roughness);
 
         vec3 kS = F; //光被反射的比例
-        vec3 kD = mix(vec3(1.0) - kS,vec3(0.f),metallic);//光被折射的比例
+        vec3 kD = vec3(1.0) - kS;//光被折射的比例
+        kD *= 1 - metallic;
         vec3 diffuseBRDF = kD * albedo.rgb;
 
         vec3 specularBRDF = (NDF * G * F)/max(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0),0.00001);
 
         float NdotL = max(dot(N,L),0.0);
-        Lo += (diffuseBRDF + specularBRDF) * radiance * NdotL;
+        Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;
     }
 
     vec3 ao = vec3(ao_factor);
