@@ -277,14 +277,14 @@ void main(){
 
     vec3 occlusion = vec3(ao_factor);
     if(has_occlusion_texture==1){
-        occlusion = texture(occlusion_texture,v_TexCoord).rgb;
+        occlusion = texture(occlusion_texture,v_TexCoord).rrr;
         occlusion = lerp(vec3(ao_factor),vec3(ao_factor)*occlusion,float(occlusion_strength));
     }
 
     vec3 normal = v_Normal;
     if(has_normal_texture==1){
         normal = texture(normal_texture,v_TexCoord).rgb;
-        normal = ( normal * 2.0f - 1.0f) * vec3(normal_scale,normal_scale,1.0f);
+        normal = (normal * 2.0f - 1.0f) * vec3(normal_scale,normal_scale,1.0f);
         normal = TBN * normal;
     }
 
@@ -301,16 +301,14 @@ void main(){
         if(light.state==0)continue;
 
         vec3 L = normalize(light.position - v_WorldPos); //入射光方向
+        vec3 H = normalize(V+L); //半高
         if(light.type==DIRECTIONAL_LIGHT){
             L = normalize(-light.direction);
+            H = V;
         }
-        vec3 H = normalize(V+L);
-
         vec3 radiance = light.color * light.intensity;
-
-        float bias = max(0.005 * (1.0 - dot(normal, L)), 0.005);//shadow bias
-
         //计算阴影
+        float bias = max(0.005 * (1.0 - dot(normal, L)), 0.005);//shadow bias
         if(light.type==POINT_LIGHT){
             float distance = length(light.position - v_WorldPos);
 
@@ -361,16 +359,16 @@ void main(){
         kD *= 1 - metallic;
         vec3 diffuseBRDF = kD * albedo.rgb;
 
-        vec3 specularBRDF = (NDF * G * F)/max(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0),0.00001);
+        vec3 specularBRDF = (NDF * G * F)/max(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0),0.00000001);
 
         float NdotL = max(dot(N,L),0.0);
         Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;
     }
 
-    vec3 ambient = albedo.rgb * occlusion;
+    vec3 ambient = vec3(0.03) * albedo.rgb * occlusion;
     vec3 color = ambient + Lo;
-    color = color / (color + vec3(1.0));//LDR to HDR
-    color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2
+    color = color / (color + vec3(1.0));//HDR to LDR
+    color = pow(color, vec3(1.0/2.2)); // LDR to Gamma2
 
     FragColor = vec4(color,1.0);
 }

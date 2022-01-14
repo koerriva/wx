@@ -77,12 +77,12 @@ namespace wx {
         int has_albedo_texture = 0;
         uint32_t albedo_texture;
 
-        float ao = 0.1;
+        float ao = 1.0;
         int has_occlusion_texture = 0;
         uint32_t occlusion_texture;
         double occlusion_strength = 1.0;
 
-        float metallic_factor = 0.0;
+        float metallic_factor = 1.0;
         float roughness_factor = 1.0;
         int has_metallic_roughness_texture = 0;
         uint32_t metallic_roughness_texture;
