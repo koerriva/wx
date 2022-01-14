@@ -43,7 +43,7 @@ namespace wx {
         app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
 //        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-//        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
+        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
 
 
@@ -98,7 +98,7 @@ namespace wx {
             if(snake_animator){
                 if(snake_animator->state!=Animator::play){
                     WX_INFO("Play Snake Animation");
-                    snake_animator->Play();
+                    snake_animator->Play("Snake_Idle");
                 }else{
                     WX_INFO("Pause Snake Animation");
                     snake_animator->Pause();
