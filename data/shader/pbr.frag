@@ -35,6 +35,7 @@ in vec3 v_Color;
 in vec3 v_WorldPos;
 in vec3 v_Normal;
 in vec4 v_LightWorldPos[5];
+in mat3 TBN;
 
 uniform int light_num;
 uniform Light lights[20];
@@ -53,8 +54,13 @@ uniform int has_metallic_roughness_texture;
 uniform sampler2D metallic_roughness_texture;
 //环境光遮蔽 - 可以换成贴图需要从sRGB 转换到 linerRGB
 uniform float ao_factor;
-uniform int has_ao_texture;
-uniform sampler2D ao_texture;
+uniform int has_occlusion_texture;
+uniform sampler2D occlusion_texture;
+uniform double occlusion_strength;
+//法线贴图
+uniform int has_normal_texture;
+uniform sampler2D normal_texture;
+uniform double normal_scale;
 
 //平行光阴影贴图
 uniform sampler2D shadowMap[5];
@@ -250,6 +256,10 @@ float CalcPointLightShadow(samplerCube shadowMap,vec3 fragPos,vec3 lightPos,floa
     return shadow;
 }
 
+vec3 lerp(vec3 prev,vec3 next,float t){
+    return prev+(next-prev)*t;
+}
+
 void main(){
     vec4 albedo = albedo_factor;
     if(has_albedo_texture==1){
@@ -265,7 +275,20 @@ void main(){
         roughness = mr.y;
     }
 
-    vec3 N = normalize(v_Normal);
+    vec3 occlusion = vec3(ao_factor);
+    if(has_occlusion_texture==1){
+        occlusion = texture(occlusion_texture,v_TexCoord).rgb;
+        occlusion = lerp(vec3(ao_factor),vec3(ao_factor)*occlusion,float(occlusion_strength));
+    }
+
+    vec3 normal = v_Normal;
+    if(has_normal_texture==1){
+        normal = texture(normal_texture,v_TexCoord).rgb;
+        normal = ( normal * 2.0f - 1.0f) * vec3(normal_scale,normal_scale,1.0f);
+        normal = TBN * normal;
+    }
+
+    vec3 N = normalize(normal);
     vec3 V = normalize(cameraPos - v_WorldPos); //出射光线
     vec3 Lo = vec3(0.0); //出射光线的辐射率
     vec3 F0 = vec3(0.04);//非金属材质默认0.04
@@ -285,7 +308,7 @@ void main(){
 
         vec3 radiance = light.color * light.intensity;
 
-        float bias = max(0.005 * (1.0 - dot(v_Normal, L)), 0.005);//shadow bias
+        float bias = max(0.005 * (1.0 - dot(normal, L)), 0.005);//shadow bias
 
         //计算阴影
         if(light.type==POINT_LIGHT){
@@ -344,8 +367,7 @@ void main(){
         Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;
     }
 
-    vec3 ao = vec3(ao_factor);
-    vec3 ambient = vec3(0.03) * albedo.rgb * ao;
+    vec3 ambient = albedo.rgb * occlusion;
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//LDR to HDR
     color = pow(color, vec3(1.0/2.2)); // HDR to Gamma2

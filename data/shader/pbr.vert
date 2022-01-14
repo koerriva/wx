@@ -5,6 +5,7 @@ layout (location = 1) in vec3 normal;
 layout (location = 2) in vec2 texcoord;
 layout (location = 3) in uvec4 joint;
 layout (location = 4) in vec4 weight;
+layout (location = 5) in vec4 tangent;
 
 uniform float time;
 
@@ -19,6 +20,7 @@ out vec2 v_TexCoord;
 out vec3 v_WorldPos;
 out vec3 v_Normal;
 out vec4 v_LightWorldPos[5];
+out mat3 TBN;
 
 void main(){
 
@@ -40,6 +42,12 @@ void main(){
     for(int i=0;i<5;i++){
         v_LightWorldPos[i] = LightPV[i]*model*vec4(position,1.0);
     }
+
+    vec3 bitangent = cross(normal,tangent.xyz) * tangent.w;
+    vec3 T = normalize(vec3(model * vec4(tangent.xyz,   0.0)));
+    vec3 B = normalize(vec3(model * vec4(bitangent, 0.0)));
+    vec3 N = normalize(vec3(model * vec4(normal,    0.0)));
+    TBN = mat3(T, B, N);
 
     gl_Position = P*V*model*vec4(position,1.0);
 }

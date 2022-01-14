@@ -225,7 +225,8 @@ namespace wx {
 
         ShaderProgram::SetInt(shaderProgram,"albedo_texture",0);
         ShaderProgram::SetInt(shaderProgram,"metallic_roughness_texture",1);
-        ShaderProgram::SetInt(shaderProgram,"ao_texture",2);
+        ShaderProgram::SetInt(shaderProgram,"occlusion_texture",2);
+        ShaderProgram::SetInt(shaderProgram,"normal_texture",3);
 
         ShaderProgram::SetInt(shaderProgram,"light_num",lights.size());
 
@@ -236,9 +237,10 @@ namespace wx {
         }
         ShaderProgram::SetLight(shaderProgram,"lights",render_lights);
 
+        int shadowMapOffset = 4;
         for (int i = 0; i < 5; ++i) {
-            ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",2+i);
-            ShaderProgram::SetInt(shaderProgram,"shadowCubeMap["+ to_string(i)+"]",2+5+i);
+            ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",shadowMapOffset+i);
+            ShaderProgram::SetInt(shaderProgram,"shadowCubeMap["+ to_string(i)+"]",shadowMapOffset+5+i);
         }
 
         int cube_map_index = 0;
@@ -246,13 +248,13 @@ namespace wx {
         for (auto light : render_lights) {
             if(light->has_shadow_map){
                 if(light->type==Light::point){
-                    int index = 2+5+cube_map_index;
+                    int index = shadowMapOffset+5+cube_map_index;
                     glBindTextureUnit(index,light->shadow_map.texture);
                     light->shadow_map_index = cube_map_index;
                     cube_map_index++;
                 }
                 if(light->type==Light::directional||light->type==Light::spot){
-                    int index = 2+map_index;
+                    int index = shadowMapOffset+map_index;
                     glBindTextureUnit(index,light->shadow_map.texture);
                     light->shadow_map_index = map_index;
                     mat4 pv = light->p * light->v;
@@ -288,6 +290,14 @@ namespace wx {
                     glBindTextureUnit(1,mat.metallic_roughness_texture);
                 }
 
+                if(mat.has_occlusion_texture){
+                    glBindTextureUnit(2,mat.occlusion_texture);
+                }
+
+                if(mat.has_normal_texture){
+                    glBindTextureUnit(3,mat.normal_texture);
+                }
+
                 ShaderProgram::SetVec4(shaderProgram, "albedo_factor", value_ptr(mat.albedo_factor));
                 ShaderProgram::SetInt(shaderProgram,"has_albedo_texture",mat.has_albedo_texture);
 
@@ -296,7 +306,11 @@ namespace wx {
                 ShaderProgram::SetInt(shaderProgram,"has_metallic_roughness_texture",mat.has_metallic_roughness_texture);
 
                 ShaderProgram::SetFloat(shaderProgram,"ao_factor",mat.ao);
-                ShaderProgram::SetInt(shaderProgram,"has_ao_texture",0);
+                ShaderProgram::SetInt(shaderProgram,"has_occlusion_texture",mat.has_occlusion_texture);
+                ShaderProgram::SetDouble(shaderProgram,"occlusion_strength",mat.occlusion_strength);
+
+                ShaderProgram::SetInt(shaderProgram,"has_normal_texture",mat.has_normal_texture);
+                ShaderProgram::SetDouble(shaderProgram,"normal_scale",mat.normal_scale);
 
                 glBindVertexArray(primitive.vao);
                 if(primitive.indices_count==0){

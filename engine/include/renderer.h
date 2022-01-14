@@ -69,6 +69,8 @@ namespace wx {
 
         static void SetFloat(uint32_t pid, const string &name, float value);
 
+        static void SetDouble(uint32_t pid, const string &name, double value);
+
         static void SetMat4(uint32_t pid, const string &name, float *value);
 
         static void SetVec4(uint32_t pid, const string &name, float *value);

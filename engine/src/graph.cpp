@@ -221,6 +221,9 @@ namespace wx {
     void ShaderProgram::SetFloat(uint32_t pid,const string& _name, float value) {
         glUniform1f(FindUniformLocation(pid,_name),value);
     }
+    void ShaderProgram::SetDouble(uint32_t pid,const string& _name, double value) {
+        glUniform1d(FindUniformLocation(pid,_name),value);
+    }
     void ShaderProgram::SetMat4(uint32_t pid,const string& _name, float *value) {
         glUniformMatrix4fv(FindUniformLocation(pid,_name),1,GL_FALSE,value);
     }

@@ -27,7 +27,7 @@ namespace wx {
         sun.color = vec3{1.0f};
         sun.position = vec3(5.f,5.f,0.f);
         sun.direction = normalize(-sun.position);
-        sun.intensity = 10;
+        sun.intensity = 50;
         sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
         sun.has_shadow_map = 1;
         sun.near_plane = -20.f;
@@ -43,8 +43,9 @@ namespace wx {
         app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
 //        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
+//        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
+
 
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);

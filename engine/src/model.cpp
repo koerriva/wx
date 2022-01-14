@@ -38,6 +38,7 @@ namespace wx {
             Accessor* position_accessor = nullptr;
             Accessor* normal_accessor = nullptr;
             Accessor* texcoord_accessor = nullptr;
+            Accessor* tangent_accessor = nullptr;
             Accessor* joint_accessor = nullptr;
             Accessor* weight_accessor = nullptr;
             Accessor* indices_accessor = nullptr;
@@ -61,6 +62,10 @@ namespace wx {
                 }
                 if(attr.first=="WEIGHTS_0"){
                     weight_accessor = &cmodel->accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="TANGENT"){
+                    tangent_accessor = &cmodel->accessors[attr.second];
                     continue;
                 }
             }
@@ -204,6 +209,22 @@ namespace wx {
                 glVertexAttribPointer(4,4,GL_FLOAT,GL_FALSE,sizeof(vec4),nullptr);
             }
 
+            if(tangent_accessor){
+                BufferView* bufferView = &cmodel->bufferViews[tangent_accessor->bufferView];
+                Buffer* buffer = &cmodel->buffers[bufferView->buffer];
+
+                int offset = tangent_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = tangent_accessor->count;
+                int byte_size = bufferView->byteLength;
+
+                //tangents
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(5);
+                glVertexAttribPointer(5,4,GL_FLOAT,GL_FALSE,4*sizeof(float),nullptr);
+            }
+
             glBindVertexArray(0);
 
             if(primitive.material>-1){
@@ -242,6 +263,44 @@ namespace wx {
                     int warp_t = sampler->wrapT;
 
                     mesh.material.metallic_roughness_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                NormalTextureInfo normalTextureInfo = cmat->normalTexture;
+                if(normalTextureInfo.index>-1){
+                    mesh.material.has_normal_texture = 1;
+                    Texture* normalTexture = &cmodel->textures[normalTextureInfo.index];
+                    mesh.material.normal_scale = normalTextureInfo.scale;
+                    Sampler* sampler = &cmodel->samplers[normalTexture->sampler];
+                    Image* image = &cmodel->images[normalTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.normal_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                OcclusionTextureInfo occlusionTextureInfo = cmat->occlusionTexture;
+                if(occlusionTextureInfo.index>-1){
+                    mesh.material.has_occlusion_texture = 1;
+                    mesh.material.occlusion_strength = occlusionTextureInfo.strength;
+                    Texture* occlusionTexture = &cmodel->textures[occlusionTextureInfo.index];
+                    Sampler* sampler = &cmodel->samplers[occlusionTexture->sampler];
+                    Image* image = &cmodel->images[occlusionTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.occlusion_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
                 }
 
                 mesh.material.albedo_factor = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
