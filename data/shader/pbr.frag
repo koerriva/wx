@@ -365,7 +365,7 @@ void main(){
         Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.03) * albedo.rgb * occlusion;
+    vec3 ambient = albedo.rgb * occlusion;
     vec3 color = ambient + Lo;
     color = color / (color + vec3(1.0));//HDR to LDR
     color = pow(color, vec3(1.0/2.2)); // LDR to Gamma2

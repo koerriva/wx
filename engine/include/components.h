@@ -244,6 +244,13 @@ namespace wx {
         int total_count=0.0f;
     };
 
+    struct RenderState{
+        enum RenderMode {
+            Shader,Wireframe
+        };
+        RenderMode mode = Shader;
+    };
+
     struct PBRShader{
         uint32_t id;
     };
