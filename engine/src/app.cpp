@@ -11,6 +11,7 @@ namespace wx {
         level_insert_share_resource(level,VPMatrices{});
         level_insert_share_resource(level,FrameState{});
         level_insert_share_resource(level,InputState{});
+        level_insert_share_resource(level,RenderState{});
 
         uint32_t pbrShader = ShaderProgram::LoadShader("pbr");
         level_insert_share_resource(level,PBRShader{pbrShader});

@@ -212,6 +212,16 @@ namespace wx {
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
+        if(level_has_share_resource<RenderState>(level)){
+            auto* renderState = level_get_share_resource<RenderState>(level);
+            if(renderState->mode==RenderState::Wireframe){
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+            if(renderState->mode==RenderState::Shader){
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+        }
+
         mat4 P = vp->project;
         mat4 V = vp->view;
 

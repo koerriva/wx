@@ -7,6 +7,10 @@
 
 #include <stb/stb_image.h>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtx/normal.hpp>
+#include <glm/gtc/noise.hpp>
+#include "noise.h"
+#include "SimplexNoise.h"
 
 namespace wx {
     //MeshLoader
@@ -34,6 +38,125 @@ namespace wx {
 
         glBindVertexArray(0);
         return vao;
+    }
+
+    Mesh::primitive_t Assets::UnitSubQuad(int subdivision) {
+
+        SimplexNoise simplexNoise;
+
+        uint32_t vao,vbo;
+        glGenVertexArrays(1,&vao);
+        glBindVertexArray(vao);
+
+        std::vector<vec3> vertices;
+        std::vector<vec3> normals;
+        std::vector<vec2> texcoords;
+
+        int step = subdivision/2;
+        float delta = 4.f/float(subdivision);
+        float td = 2.f/ float(subdivision);
+
+        const auto spherified  = [](vec3& p)->vec3 {
+            float x=p.x,y=p.y,z=p.z;
+            float xx = x*x;float yy = y*y;float zz = z*z;
+
+            x = x*sqrt(1.f-yy/2.f-zz/2.f+yy*zz/3.f);
+            y = y*sqrt(1.f-zz/2.f-xx/2.f+zz*xx/3.f);
+            z = z*sqrt(1.f-xx/2.f-yy/2.f+xx*yy/3.f);
+            return vec3{x,y,z};
+        };
+
+        //Z+ Z- , X+ X- , Y+ Y-
+        vec3 start[6] = {{-1.f,1.f,1.f},{1.f,1.f,-1.f}
+        ,{1.f,1.f,1.f},{-1.f,1.f,-1.f}
+        ,{-1.f,1.f,-1.f},{1.f,-1.f,1.f}
+        };
+        vec3 right[6] = {{1.f,0.f,0.f},{-1.f,0.f,0.f}
+        ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
+        ,{1.f,0.f,0.f},{-1.f,0.f,0.f}
+        };
+        vec3 up[6] = {{0.f,1.f,0.f},{0.f,1.f,0.f}
+        ,{0.f,1.f,0.f},{0.f,1.f,0.f}
+        ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
+        };
+
+        for (int i = 0; i < 6; ++i) {
+            for (int h = 0; h < step; ++h) {
+                for (int v = 0; v < step; ++v) {
+                    vec3 v10 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];
+                    vec2 t10{float(v)*td,float(h)*td};
+
+                    vec3 v11 = start[i] + float(v)*delta*right[i]-float(h+1)*delta*up[i];
+                    vec2 t11{float(v)*td,float(h+1)*td};
+
+                    vec3 v12 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];
+                    vec2 t12{float(v+1)*td,float(h+1)*td};
+
+                    vec3 p[3]={spherified(v10),spherified(v11),spherified(v12)};
+                    for (auto & i:p) {
+                        float r = simplexNoise.fractal(7,i.x,i.y,i.z);
+//                        float r = simplex(i);
+                        r = (r+1.f)*0.5f;
+                        vertices.push_back(i*r);
+                        normals.push_back(normalize(i*r));
+                    }
+                    vec2 t[3]={t10,t11,t12};
+                    for (auto & i:t) {
+                        texcoords.push_back(i);
+                    }
+
+                    vec3 v20 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];;
+                    vec2 t20{float(v)*td,float(h)*td};
+
+                    vec3 v21 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];;
+                    vec2 t21{float(v+1)*td,float(h+1)*td};
+
+                    vec3 v22 = start[i] + float(v+1)*delta*right[i]-float(h)*delta*up[i];;
+                    vec2 t22{float(v+1)*td,float(h)*td};
+
+                    vec3 p1[3]={spherified(v20),spherified(v21),spherified(v22)};
+                    for (auto & i : p1) {
+                        float r = simplexNoise.fractal(7,i.x,i.y,i.z);
+//                        float r = simplex(i);
+                        r = (r+1.f)*0.5f;
+                        vertices.push_back(i*r);
+                        normals.push_back(normalize(i*r));
+                    }
+                    vec2 t1[3]={t20,t21,t22};
+                    for (auto & i : t1) {
+                        texcoords.push_back(i);
+                    }
+                }
+            }
+        }
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, normals.size() * 3 * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, texcoords.size() * 2 * sizeof(GLfloat), texcoords.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(0);
+
+        Mesh::primitive_t primitive;
+        primitive.vertices_count = vertices.size();
+        primitive.vao = vao;
+        return primitive;
     }
 
     uint32_t TextureLoader::Load(const unsigned char *buffer, int len, ivec2 filter, ivec2 warp) {

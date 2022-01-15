@@ -39,14 +39,21 @@ namespace wx {
         app->Spawn(sun,CastShadow{},Sun{});
         app->Spawn(canvas);
         app->Spawn(camera,wx::MainCamera{});
+
+        Spatial3d spatial3D{.name="Sphere01"};
+        Transform transform{.scale={10.f,10.f,10.f}};
+        Mesh mesh{};
+        mesh.name="Face01";
+        mesh.primitives.push_back(Assets::UnitSubQuad(64));
+
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+//        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+//        app->SpawnFromModel("model\\cube.gltf","Cube01");
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
 //        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
-        app->SpawnFromModel("model\\Scene.gltf","Scene");
-
-
+//        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
+//        app->SpawnFromModel("model\\Scene.gltf","Scene");
+        app->Spawn(spatial3D,transform,mesh,ReceiveShadow{});
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -124,6 +131,18 @@ namespace wx {
             if(fly_animator){
                 WX_INFO("Stop Fly Animation");
                 fly_animator->Stop();
+            }
+        }
+
+        if(inputState->GetKeyPressed(InputState::Num1)){
+            WX_INFO("Pressed Num1");
+            if(level_has_share_resource<RenderState>(level)){
+                auto render_state = level_get_share_resource<RenderState>(level);
+                if(render_state->mode==RenderState::Shader){
+                    render_state->mode=RenderState::Wireframe;
+                }else{
+                    render_state->mode=RenderState::Shader;
+                }
             }
         }
     }
