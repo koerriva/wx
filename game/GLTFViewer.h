@@ -8,16 +8,6 @@
 #include "engine.h"
 
 namespace wx {
-    struct GLTFViewer {
-        Camera* camera;
-        Debug* debug;
-        vector<::entity_id> models;
-        vector<::entity_id> lights;
-        ::entity_id canvas;
-        bool debug_light_switch = false;
-        bool hideCursor = false;
-    };
-
     struct Sun{};
     void test_input_system(level* level,float delta);
 }

@@ -1,6 +1,10 @@
 aux_source_directory(src ENGINE_SRC)
 add_library(engine ${ENGINE_SRC})
+add_executable(hud src/hud.c src/demo.c src/perf.c)
 include_directories(include)
 include_directories(${PROJECT_SOURCE_DIR}/glad/include)
 include_directories(${PROJECT_SOURCE_DIR}/noise/include)
-target_link_libraries(engine PRIVATE spdlog::spdlog glad glfw3 opengl32 freetype fmt noise)
+target_link_libraries(engine PRIVATE spdlog::spdlog glad glfw3 opengl32 freetype fmt noise nanovg)
+target_link_libraries(hud PRIVATE glad glfw3 opengl32 freetype nanovg)
+
+file(COPY ../data/example DESTINATION ${PROJECT_BINARY_DIR}/engine)

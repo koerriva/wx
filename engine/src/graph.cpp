@@ -40,9 +40,13 @@ namespace wx {
         return vao;
     }
 
-    Mesh::primitive_t Assets::UnitSubQuad(int subdivision) {
+    Mesh::primitive_t Assets::UnitSubQuad(int subdivision,float base_radius,size_t octaves
+                                          ,float frequency
+                                          ,float amplitude
+                                          ,float lacunarity
+                                          ,float persistence) {
 
-        SimplexNoise simplexNoise;
+        SimplexNoise simplexNoise{frequency,amplitude,lacunarity,persistence};
 
         uint32_t vao,vbo;
         glGenVertexArrays(1,&vao);
@@ -92,17 +96,19 @@ namespace wx {
                     vec3 v12 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];
                     vec2 t12{float(v+1)*td,float(h+1)*td};
 
-                    vec3 p[3]={spherified(v10),spherified(v11),spherified(v12)};
-                    for (auto & i:p) {
-                        float r = simplexNoise.fractal(7,i.x,i.y,i.z);
-//                        float r = simplex(i);
+                    vec3 p0[3]={spherified(v10),spherified(v11),spherified(v12)};
+                    for (auto & p:p0) {
+                        float r = simplexNoise.fractal(octaves,p.x,p.y,p.z);
                         r = (r+1.f)*0.5f;
-                        vertices.push_back(i*r);
-                        normals.push_back(normalize(i*r));
+                        if(r<base_radius){
+                            r = base_radius;
+                        }
+                        p = p*r;
+                        vertices.push_back(p);
                     }
-                    vec2 t[3]={t10,t11,t12};
-                    for (auto & i:t) {
-                        texcoords.push_back(i);
+                    vec2 t0[3]={t10,t11,t12};
+                    for (auto & t:t0) {
+                        texcoords.push_back(t);
                     }
 
                     vec3 v20 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];;
@@ -115,17 +121,30 @@ namespace wx {
                     vec2 t22{float(v+1)*td,float(h)*td};
 
                     vec3 p1[3]={spherified(v20),spherified(v21),spherified(v22)};
-                    for (auto & i : p1) {
-                        float r = simplexNoise.fractal(7,i.x,i.y,i.z);
-//                        float r = simplex(i);
+                    for (auto & p : p1) {
+                        float r = simplexNoise.fractal(octaves,p.x,p.y,p.z);
                         r = (r+1.f)*0.5f;
-                        vertices.push_back(i*r);
-                        normals.push_back(normalize(i*r));
+                        if(r<base_radius){
+                            r = base_radius;
+                        }
+                        p = p*r;
+                        vertices.push_back(p);
                     }
                     vec2 t1[3]={t20,t21,t22};
-                    for (auto & i : t1) {
-                        texcoords.push_back(i);
+                    for (auto & t : t1) {
+                        texcoords.push_back(t);
                     }
+
+                    vec3 f0_normal = triangleNormal(p0[0],p0[1],p0[2]);
+                    vec3 f1_normal = triangleNormal(p1[0],p1[1],p1[2]);
+                    vec3 normal = normalize(f0_normal + f1_normal);
+
+                    normals.push_back(normal);
+                    normals.push_back(normal);
+                    normals.push_back(normal);
+                    normals.push_back(normal);
+                    normals.push_back(normal);
+                    normals.push_back(normal);
                 }
             }
         }
@@ -156,6 +175,8 @@ namespace wx {
         Mesh::primitive_t primitive;
         primitive.vertices_count = vertices.size();
         primitive.vao = vao;
+        primitive.material.metallic_factor = 0.01;
+        primitive.material.roughness_factor = 0.99;
         return primitive;
     }
 

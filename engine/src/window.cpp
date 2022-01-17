@@ -11,8 +11,20 @@
 #include <stb/stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
-
 #include "systems.h"
+
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_KEYSTATE_BASED_INPUT
+#include "nuklear.h"
+#define NK_GLFW_GL3_IMPLEMENTATION
+#include "nuklear_glfw_gl3.h"
 
 namespace wx {
     void window_update_system(level* level,float delta){
@@ -81,14 +93,35 @@ namespace wx {
             if(vsync){
                 glfwSwapInterval(1);
             }
+
+            //nuklear
+            nkContext = nk_glfw3_init(&nkGlfw,glfwWindow,NK_GLFW3_INSTALL_CALLBACKS);
+            /* Load Fonts: if none of these are loaded a default font will be used  */
+            /* Load Cursor: if you uncomment cursor loading please hide the cursor */
+            {
+                struct nk_font_atlas *atlas;
+                nk_glfw3_font_stash_begin(&nkGlfw, &atlas);
+                struct nk_font_config config = nk_font_config(16);
+                config.oversample_h = 1;
+                config.oversample_v = 1;
+                config.range = nk_font_chinese_glyph_ranges();
+                struct nk_font *notosans = nk_font_atlas_add_from_file(atlas, "data/font/NotoSansSC-Regular.otf", 16, &config);
+                nk_glfw3_font_stash_end(&nkGlfw);
+                /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
+                nk_style_set_font(nkContext, &notosans->handle);
+            }
+
+            /*set_style(ctx, THEME_WHITE);*/
+            /*set_style(ctx, THEME_RED);*/
+            /*set_style(ctx, THEME_BLUE);*/
+            /*set_style(ctx, THEME_DARK);*/
         }
     }
 
     void Window::Update(){
-        closed = glfwWindowShouldClose(glfwWindow)==1;
-//        glfwGetWindowSize(glfwWindow,&width,&height);
-        glfwSwapBuffers(glfwWindow);
         glfwPollEvents();
+        closed = glfwWindowShouldClose(glfwWindow)==1;
+        glfwSwapBuffers(glfwWindow);
     }
 
     void Window::Cleanup(){

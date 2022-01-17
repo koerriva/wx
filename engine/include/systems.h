@@ -13,6 +13,7 @@ namespace wx {
 
     //Window
     void window_update_system(level* level,float delta);
+    void nuklear_update_system(level* level,float delta);
     //Input
     void input_update_system(level* level,float delta);
     //Camera
@@ -23,6 +24,7 @@ namespace wx {
     void render_shadow_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights);
     void render_mesh_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights,::entity_id camera);
     void render_ui_phase(level* level,float delta,const std::vector<::entity_id>& items);
+    void render_nuklear_phase(level* level,float delta);
     //animation
     void animator_update_system(level* level,float delta);
 

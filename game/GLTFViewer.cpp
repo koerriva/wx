@@ -9,6 +9,9 @@ using namespace glm;
 
 #include "systems.h"
 
+#define MAX_VERTEX_BUFFER (512 * 1024)
+#define MAX_ELEMENT_BUFFER (128 * 1024)
+
 namespace wx {
 
     void gltf_viewer_game(App* app){
@@ -27,7 +30,7 @@ namespace wx {
         sun.color = vec3{1.0f};
         sun.position = vec3(5.f,5.f,0.f);
         sun.direction = normalize(-sun.position);
-        sun.intensity = 50;
+        sun.intensity = 10;
         sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
         sun.has_shadow_map = 1;
         sun.near_plane = -20.f;
@@ -40,20 +43,13 @@ namespace wx {
         app->Spawn(canvas);
         app->Spawn(camera,wx::MainCamera{});
 
-        Spatial3d spatial3D{.name="Sphere01"};
-        Transform transform{.scale={10.f,10.f,10.f}};
-        Mesh mesh{};
-        mesh.name="Face01";
-        mesh.primitives.push_back(Assets::UnitSubQuad(64));
-
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-//        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
 //        app->SpawnFromModel("model\\cube.gltf","Cube01");
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
 //        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-//        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
-//        app->SpawnFromModel("model\\Scene.gltf","Scene");
-        app->Spawn(spatial3D,transform,mesh,ReceiveShadow{});
+        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
+        app->SpawnFromModel("model\\Scene.gltf","Scene");
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -145,6 +141,23 @@ namespace wx {
                 }
             }
         }
+    }
+
+    void nuklear_update_system(level* level,float delta){
+        if(!level_has_share_resource<NuklearContext>(level))return;
+        auto nkcontext = level_get_share_resource<NuklearContext>(level);
+        auto glfw = (struct nk_glfw*)nkcontext->glfw;
+        auto ctx = (struct nk_context*)nkcontext->ctx;
+
+        nk_glfw3_new_frame(glfw);
+        /* GUI */
+        if (nk_begin(ctx, "Demo", nk_rect(10, 10, 230, 300),
+                     NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
+                     NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
+        {
+        }
+        nk_end(ctx);
+        nk_glfw3_render(glfw, NK_ANTI_ALIASING_ON, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
     }
 
 //    void GLTFViewer::Init(Window *window) {

@@ -184,6 +184,10 @@ namespace wx {
         vec2 size{0};
     };
 
+    struct HUD {
+
+    };
+
     struct Animator {
         enum State{
             stop=0,play,pause
@@ -252,6 +256,10 @@ namespace wx {
     };
 
     struct PBRShader{
+        uint32_t id;
+    };
+
+    struct TerrainShader {
         uint32_t id;
     };
 
@@ -326,6 +334,11 @@ namespace wx {
         [[nodiscard]] vec2 GetCursorOffset() const{
             return (curr_cursor_pos-last_cursor_pos)*cursor_sensitivity;
         }
+    };
+
+    struct NuklearContext{
+        void* glfw;
+        void* ctx;
     };
 }
 #endif //WX_COMPONENTS_H

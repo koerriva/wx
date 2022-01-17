@@ -55,6 +55,9 @@ namespace wx {
                 return transform->GetLocalMatrix();
             }
         }
+
+        WX_CORE_ERROR("calc transform error!");
+        return mat4{1.0};
     }
 
     void spatial_update_system(level* level,float delta){
@@ -335,6 +338,8 @@ namespace wx {
         ShaderProgram::Unbind();
 
         glDisable(GL_DEPTH_TEST);
+
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     void render_ui_phase(level* level,float delta,const vector<::entity_id>& items){

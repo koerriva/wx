@@ -24,7 +24,10 @@ namespace wx {
     class Assets {
     public:
         static uint32_t UnitQuad();
-        static Mesh::primitive_t UnitSubQuad(int subdivision=4);
+        static Mesh::primitive_t UnitSubQuad(int subdivision=4,float base_radius=1.f,size_t octaves = 7,float frequency=1.f
+                ,float amplitude=1.f
+                ,float lacunarity=2.f
+                ,float persistence=0.5);
         static entity_id LoadAnimateModel(level* level,const char *filename,const char *name="",const Transform& transform={});
         static uint32_t LoadTexture(ivec3 shape,ivec2 filter,ivec2 warp,const unsigned char *buffer);
     };

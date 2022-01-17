@@ -10,6 +10,17 @@
 #include <string>
 #include <glm/vec2.hpp>
 
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_KEYSTATE_BASED_INPUT
+#include "nuklear.h"
+#include "nuklear_glfw_gl3.h"
+
 namespace wx {
     using namespace std;
 
@@ -25,6 +36,9 @@ namespace wx {
         GLFWwindow* glfwWindow = nullptr;
         float widthScale=1.0f,heightScale=1.0f;
 
+        //nuklear
+        struct nk_glfw nkGlfw{nullptr};
+        struct nk_context* nkContext;
     public:
         Window();
         Window(string title,int width,int height,bool vsync);
@@ -38,6 +52,14 @@ namespace wx {
         void SetVSync(bool vSync);
         void ShowWindow(bool visible);
         void SetToCenter();
+
+        void* GetNKGlfw(){
+            return &nkGlfw;
+        }
+
+        void* GetNKCtx(){
+            return nkContext;
+        }
 
         [[nodiscard]] bool Closed() const {
             return closed;
@@ -73,16 +95,8 @@ namespace wx {
             return width;
         }
 
-        [[nodiscard]] int GetFrameBufferWidth() const {
-            return width*int(widthScale);
-        }
-
         [[nodiscard]] int GetHeight() const {
             return height;
-        }
-
-        [[nodiscard]] int GetFrameBufferHeight() const {
-            return height*int(heightScale);
         }
 
         [[nodiscard]] static double GetTimeInSecond() {

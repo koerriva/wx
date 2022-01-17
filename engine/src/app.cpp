@@ -57,28 +57,35 @@ namespace wx {
         engine_components.emplace_back(typeid(Spatial3d).name());
 
         level_register_system(level,context_setup_system, SYSTEM_NAME(context_setup_system));
-        level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
         level_register_system(level,input_update_system, SYSTEM_NAME(input_update_system));
         level_register_system(level,camera_update_system, SYSTEM_NAME(camera_update_system));
         level_register_system(level,animator_update_system, SYSTEM_NAME(animator_update_system));
         level_register_system(level,spatial_update_system, SYSTEM_NAME(spatial_update_system));
         level_register_system(level,render_update_system, SYSTEM_NAME(render_update_system));
+        level_register_system(level,nuklear_update_system, SYSTEM_NAME(nuklear_update_system));
+        level_register_system(level,window_update_system, SYSTEM_NAME(window_update_system));
 
         engine_startup_systems.emplace_back(SYSTEM_NAME(context_setup_system));
         engine_startup_systems.emplace_back(SYSTEM_NAME(animator_update_system));
         engine_startup_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
 
-        engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(animator_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(nuklear_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
 
         level_insert_share_resource(level,Window{});
         auto window = level_get_share_resource<Window>(level);
         window->Init();
         Font::Init();
+
+        NuklearContext nuklearContext{};
+        nuklearContext.glfw = window->GetNKGlfw();
+        nuklearContext.ctx  = window->GetNKCtx();
+        level_insert_share_resource(level,nuklearContext);
     }
 
     App& App::AddSystem(const char* name,system_t system) {
