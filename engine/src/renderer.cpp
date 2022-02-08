@@ -7,6 +7,7 @@
 #include "renderer.h"
 #include "font.h"
 #include "systems.h"
+#include "engine.h"
 
 namespace wx {
     void camera_update_system(level* level,float delta){
@@ -76,6 +77,8 @@ namespace wx {
     std::vector<::entity_id> models(1024);
     std::vector<::entity_id> lights(124);
     std::vector<::entity_id> ui(128);
+    ::entity_id skybox_entity = 0;
+    ::entity_id camera = 0;
 
     void render_update_system(level* level,float delta){
         models.clear();
@@ -85,7 +88,6 @@ namespace wx {
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
 
-        ::entity_id main_camera = 0;
         while (entities_iter != level->entities.end()){
             uint32_t entity_idx = entities_iter-entities_begin;
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
@@ -93,20 +95,25 @@ namespace wx {
                 lights.push_back(entity);
             }
             if(entity!=0 && level_has_components<Mesh,ReceiveShadow>(level,entity)){
-                models.push_back(entity);
+//                models.push_back(entity);
             }
             if(entity!=0 && level_has_components<Canvas>(level,entity)){
                 ui.push_back(entity);
             }
             if(entity!=0 && level_has_components<MainCamera>(level,entity)){
-                main_camera = entity;
+                camera = entity;
+            }
+            if(entity!=0 && level_has_components<Skybox>(level,entity)){
+                skybox_entity = entity;
             }
             entities_iter++;
         }
 
-        render_shadow_phase(level,delta,models,lights);
-        render_mesh_phase(level,delta,models,lights,main_camera);
-        render_ui_phase(level,delta,ui);
+//        render_skydome_phase(level,delta);
+        render_skybox_phase(level,delta);
+//        render_shadow_phase(level,delta);
+//        render_mesh_phase(level,delta);
+//        render_ui_phase(level,delta);
 
         auto* frameState = level_get_share_resource<FrameState>(level);
         frameState->delta_time = delta;
@@ -114,7 +121,168 @@ namespace wx {
         frameState->total_count += 1;
     }
 
-    void render_shadow_phase(level* level,float delta,vector<entity_id>& models,vector<entity_id>& lights){
+    void render_skydome_phase(level* level,float delta){
+        auto skybox = level_get_component<Skybox>(level,skybox_entity);
+        auto skydomeShader = level_get_share_resource<SkydomeShader>(level);
+        auto frameState = level_get_share_resource<FrameState>(level);
+
+        auto window = level_get_share_resource<Window>(level);
+        auto vp = level_get_share_resource<VPMatrices>(level);
+
+        glViewport(0, 0, window->GetWidth(), window->GetHeight());
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+
+        uint32_t shaderProgram = skydomeShader->id;
+        ShaderProgram::Bind(shaderProgram);
+        auto mesh= level_get_component<Mesh>(level,skybox_entity);
+
+        mat4 P = vp->project;
+        mat4 V = vp->view;
+        mat4 M{1.f};
+        ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+        ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+        ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+        ShaderProgram::SetVec3(shaderProgram,"sun_pos", value_ptr(skybox->sun_pos));
+        ShaderProgram::SetMat3(shaderProgram,"rot_stars", value_ptr(skybox->rot_stars));
+
+        ShaderProgram::SetInt(shaderProgram,"tint",0);
+        glBindTextureUnit(0,skybox->tint);
+        ShaderProgram::SetInt(shaderProgram,"tint2",1);
+        glBindTextureUnit(1,skybox->tint2);
+        ShaderProgram::SetInt(shaderProgram,"sun",2);
+        glBindTextureUnit(2,skybox->sun);
+        ShaderProgram::SetInt(shaderProgram,"moon",3);
+        glBindTextureUnit(3,skybox->moon);
+        ShaderProgram::SetInt(shaderProgram,"clouds1",4);
+        glBindTextureUnit(4,skybox->clouds1);
+        ShaderProgram::SetInt(shaderProgram,"clouds2",5);
+        glBindTextureUnit(5,skybox->clouds2);
+
+        ShaderProgram::SetFloat(shaderProgram,"weather",skybox->weather);
+        ShaderProgram::SetFloat(shaderProgram,"time",frameState->total_time);
+
+        for (auto& primitive:mesh->primitives) {
+            glBindVertexArray(primitive.vao);
+            if(primitive.indices_count==0){
+                glDrawArrays(GL_TRIANGLES,0,primitive.vertices_count);
+            }else{
+                glDrawElements(GL_TRIANGLES,primitive.indices_count,primitive.indices_type,nullptr);
+            }
+            glBindVertexArray(0);
+        }
+
+        ShaderProgram::Unbind();
+    }
+
+    void render_skybox_phase(level* level,float delta){
+        glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
+        auto right_left_face_view = [](vec3 position,float dir)->mat4 {
+            return lookAt(position, position + vec3(dir,0.0,0.0), vec3(0.0,1.0,0.0));
+        };
+        auto up_down_face_view = [](vec3 position,float dir)->mat4 {
+            return lookAt(position, position + vec3(0.0,dir,0.0), vec3(0.0,0.0,1.0));
+        };
+        auto near_far_face_view = [](vec3 position,float dir)->mat4 {
+            return lookAt(position, position + vec3(0.0,0.0,dir), vec3(0.0,1.0,0.0));
+        };
+
+        auto skybox = level_get_component<Skybox>(level,skybox_entity);
+        auto skyboxMapShader = level_get_share_resource<SkyboxMapShader>(level);
+        auto skyboxShader = level_get_share_resource<SkyboxShader>(level);
+        auto frameState = level_get_share_resource<FrameState>(level);
+
+        glViewport(0, 0, skybox->cubemap.width, skybox->cubemap.height);
+        glBindFramebuffer(GL_FRAMEBUFFER, skybox->cubemap.fbo);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        uint32_t shaderProgram = skyboxMapShader->id;
+        ShaderProgram::Bind(shaderProgram);
+        mat4 projection = ortho(-1.f,1.f,-1.f,1.f,1.f,-1.f);
+        vec3 position{0.f};
+
+        shadowCubeTransforms[0] = projection * right_left_face_view(position, 1.0);//right
+        shadowCubeTransforms[1] = projection * right_left_face_view(position, -1.0f);//left
+        shadowCubeTransforms[2] = projection * up_down_face_view(position, 1.0);//up
+        shadowCubeTransforms[3] = projection * up_down_face_view(position, -1.0);//down
+        shadowCubeTransforms[4] = projection * near_far_face_view(position, 1.0);//near
+        shadowCubeTransforms[5] = projection * near_far_face_view(position, -1.0);//far
+
+        for (int i = 0; i < 6; ++i) {
+            ShaderProgram::SetMat4(shaderProgram,"faceMatrices["+ to_string(i)+"]", value_ptr(shadowCubeTransforms[i]));
+        }
+
+        auto mesh= level_get_component<Mesh>(level,skybox_entity);
+        mat4 M{1.f};
+        ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+        ShaderProgram::SetVec3(shaderProgram,"sun_pos", value_ptr(skybox->sun_pos));
+        ShaderProgram::SetMat3(shaderProgram,"rot_stars", value_ptr(skybox->rot_stars));
+
+        ShaderProgram::SetInt(shaderProgram,"tint",0);
+        glBindTextureUnit(0,skybox->tint);
+        ShaderProgram::SetInt(shaderProgram,"tint2",1);
+        glBindTextureUnit(1,skybox->tint2);
+        ShaderProgram::SetInt(shaderProgram,"sun",2);
+        glBindTextureUnit(2,skybox->sun);
+        ShaderProgram::SetInt(shaderProgram,"moon",3);
+        glBindTextureUnit(3,skybox->moon);
+        ShaderProgram::SetInt(shaderProgram,"clouds1",4);
+        glBindTextureUnit(4,skybox->clouds1);
+        ShaderProgram::SetInt(shaderProgram,"clouds2",5);
+        glBindTextureUnit(5,skybox->clouds2);
+
+        ShaderProgram::SetFloat(shaderProgram,"weather",skybox->weather);
+        ShaderProgram::SetFloat(shaderProgram,"time",frameState->total_time);
+
+        for (auto& primitive:mesh->primitives) {
+            glBindVertexArray(primitive.vao);
+            if(primitive.indices_count==0){
+                glDrawArrays(GL_TRIANGLES,0,primitive.vertices_count);
+            }else{
+                glDrawElements(GL_TRIANGLES,primitive.indices_count,primitive.indices_type,nullptr);
+            }
+            glBindVertexArray(0);
+        }
+
+        ShaderProgram::Unbind();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        {
+            auto window = level_get_share_resource<Window>(level);
+            auto vp = level_get_share_resource<VPMatrices>(level);
+
+            mat4 P = vp->project;
+            mat4 V = vp->view;
+
+            glViewport(0,0,window->GetWidth(),window->GetHeight());
+            glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+//            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glEnable(GL_DEPTH_TEST);
+//            glDepthMask(GL_FALSE);
+
+            M = scale(M,vec3(3.f));
+            shaderProgram = skyboxShader->id;
+            ShaderProgram::Bind(shaderProgram);
+            ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
+            ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
+            ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+            ShaderProgram::SetInt(shaderProgram,"skyboxMap",0);
+            glBindTextureUnit(0,skybox->cubemap.texture);
+            for (auto& primitive:mesh->primitives) {
+                glBindVertexArray(primitive.vao);
+                if(primitive.indices_count==0){
+                    glDrawArrays(GL_TRIANGLES,0,primitive.vertices_count);
+                }else{
+                    glDrawElements(GL_TRIANGLES,primitive.indices_count,primitive.indices_type,nullptr);
+                }
+                glBindVertexArray(0);
+            }
+            ShaderProgram::Unbind();
+//            glDepthMask(GL_TRUE);
+        }
+    }
+
+    void render_shadow_phase(level* level,float delta){
         glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
         auto right_left_face_view = [](vec3 position,float dir)->mat4 {
             return lookAt(position, position + vec3(dir,0.0,0.0), vec3(0.0,-1.0,0.0));
@@ -205,11 +373,11 @@ namespace wx {
         }
     }
 
-    void render_mesh_phase(level* level,float delta,vector<entity_id>& models,vector<entity_id>& lights,entity_id camera){
+    void render_mesh_phase(level* level,float delta){
         auto window = level_get_share_resource<Window>(level);
         auto vp = level_get_share_resource<VPMatrices>(level);
         auto pbrShader = level_get_share_resource<PBRShader>(level);
-        auto* frameState = level_get_share_resource<FrameState>(level);
+        auto frameState = level_get_share_resource<FrameState>(level);
 
         glViewport(0,0,window->GetWidth(),window->GetHeight());
         glClear(GL_DEPTH_BUFFER_BIT|GL_COLOR_BUFFER_BIT);
@@ -254,6 +422,13 @@ namespace wx {
         for (int i = 0; i < 5; ++i) {
             ShaderProgram::SetInt(shaderProgram,"shadowMap["+ to_string(i)+"]",shadowMapOffset+i);
             ShaderProgram::SetInt(shaderProgram,"shadowCubeMap["+ to_string(i)+"]",shadowMapOffset+5+i);
+        }
+
+        ShaderProgram::SetInt(shaderProgram,"skyboxMap",shadowMapOffset+5+5);
+        if(skybox_entity>0){
+            auto skybox = level_get_component<Skybox>(level,skybox_entity);
+            ShaderProgram::SetInt(shaderProgram,"has_skybox",skybox_entity?1:0);
+            glBindTextureUnit(shadowMapOffset+5+5,skybox->cubemap.texture);
         }
 
         int cube_map_index = 0;
@@ -342,7 +517,7 @@ namespace wx {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
-    void render_ui_phase(level* level,float delta,const vector<::entity_id>& items){
+    void render_ui_phase(level* level,float delta){
         auto window = level_get_share_resource<Window>(level);
         auto vp = level_get_share_resource<VPMatrices>(level);
         auto flatShader = level_get_share_resource<FlatShader>(level);
@@ -358,7 +533,7 @@ namespace wx {
         ShaderProgram::SetVec3(flatShader->id,"color", value_ptr(color));
         ShaderProgram::SetMat4(flatShader->id,"P", value_ptr(P));
         ShaderProgram::SetInt(flatShader->id,"texture0",0);
-        for (auto item_entity:items) {
+        for (auto item_entity:ui) {
             auto canvas = level_get_component<Canvas>(level,item_entity);
 
             mat4 M{1.0f};

@@ -40,6 +40,120 @@ namespace wx {
         return vao;
     }
 
+    Mesh::primitive_t Assets::UnitCube(int subdivision) {
+        uint32_t vao,vbo;
+        glGenVertexArrays(1,&vao);
+        glBindVertexArray(vao);
+
+        std::vector<vec3> vertices;
+        std::vector<vec3> normals;
+        std::vector<vec2> texcoords;
+        std::vector<vec3> colors;
+
+        int step = subdivision/2;
+        float delta = 4.f/float(subdivision);
+        float td = 2.f/ float(subdivision);
+
+        const auto spherified  = [](vec3& p)->vec3 {
+            float x=p.x,y=p.y,z=p.z;
+            float xx = x*x;float yy = y*y;float zz = z*z;
+
+            x = x*sqrt(1.f-yy/2.f-zz/2.f+yy*zz/3.f);
+            y = y*sqrt(1.f-zz/2.f-xx/2.f+zz*xx/3.f);
+            z = z*sqrt(1.f-xx/2.f-yy/2.f+xx*yy/3.f);
+            return vec3{x,y,z};
+        };
+
+        //Z+ Z- , X+ X- , Y+ Y-
+        vec3 start[6] = {{-1.f,1.f,1.f},{1.f,1.f,-1.f}
+                ,{1.f,1.f,1.f},{-1.f,1.f,-1.f}
+                ,{-1.f,1.f,-1.f},{1.f,-1.f,1.f}
+        };
+        vec3 right[6] = {{1.f,0.f,0.f},{-1.f,0.f,0.f}
+                ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
+                ,{1.f,0.f,0.f},{-1.f,0.f,0.f}
+        };
+        vec3 up[6] = {{0.f,1.f,0.f},{0.f,1.f,0.f}
+                ,{0.f,1.f,0.f},{0.f,1.f,0.f}
+                ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
+        };
+
+        for (int i = 0; i < 6; ++i) {
+            for (int h = 0; h < step; ++h) {
+                for (int v = 0; v < step; ++v) {
+                    vec3 normal = cross(right[i],up[i]);
+                    vec3 v10 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];
+                    vec2 t10{float(v)*td,float(h)*td};
+
+                    vec3 v11 = start[i] + float(v)*delta*right[i]-float(h+1)*delta*up[i];
+                    vec2 t11{float(v)*td,float(h+1)*td};
+
+                    vec3 v12 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];
+                    vec2 t12{float(v+1)*td,float(h+1)*td};
+
+                    vec3 p0[3]={v10,v11,v12};
+                    for (auto & p:p0) {
+                        vertices.push_back(p);
+                        normals.push_back(normal);
+                    }
+                    vec2 t0[3]={t10,t11,t12};
+                    for (auto & t:t0) {
+                        texcoords.push_back(t);
+                    }
+
+                    vec3 v20 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];;
+                    vec2 t20{float(v)*td,float(h)*td};
+
+                    vec3 v21 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];;
+                    vec2 t21{float(v+1)*td,float(h+1)*td};
+
+                    vec3 v22 = start[i] + float(v+1)*delta*right[i]-float(h)*delta*up[i];;
+                    vec2 t22{float(v+1)*td,float(h)*td};
+
+                    vec3 p1[3]={v20,v21,v22};
+                    for (auto & p : p1) {
+                        vertices.push_back(p);
+                        normals.push_back(normal);
+                    }
+                    vec2 t1[3]={t20,t21,t22};
+                    for (auto & t : t1) {
+                        texcoords.push_back(t);
+                    }
+                }
+            }
+        }
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, normals.size() * 3 * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenBuffers(1,&vbo);
+        glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        glBufferData(GL_ARRAY_BUFFER, texcoords.size() * 2 * sizeof(GLfloat), texcoords.data(), GL_STATIC_DRAW);
+        glEnableVertexAttribArray(2);
+        glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glBindVertexArray(0);
+
+        Mesh::primitive_t primitive;
+        primitive.vertices_count = vertices.size();
+        primitive.vao = vao;
+        primitive.material.metallic_factor = 0.01;
+        primitive.material.roughness_factor = 0.99;
+        return primitive;
+    }
+
     Mesh::primitive_t Assets::UnitSubQuad(int subdivision,float base_radius,size_t octaves
                                           ,float frequency
                                           ,float amplitude
@@ -55,6 +169,7 @@ namespace wx {
         std::vector<vec3> vertices;
         std::vector<vec3> normals;
         std::vector<vec2> texcoords;
+        std::vector<vec3> colors;
 
         int step = subdivision/2;
         float delta = 4.f/float(subdivision);
@@ -180,6 +295,12 @@ namespace wx {
         return primitive;
     }
 
+    uint32_t TextureLoader::Load(const char *name) {
+        int len = 0;
+        auto buffer = AssetsLoader::LoadTexture(name,&len);
+        return Load(buffer,len,{GL_LINEAR,GL_LINEAR},{GL_REPEAT,GL_REPEAT});
+    }
+
     uint32_t TextureLoader::Load(const unsigned char *buffer, int len, ivec2 filter, ivec2 warp) {
         int width,height,comp;
         uint32_t texture;
@@ -277,6 +398,52 @@ namespace wx {
         return shadowMap;
     }
 
+    cubemap_t TextureLoader::LoadRendererCubeMap(uint32_t width, uint32_t height) {
+        GLuint cubeMapFBO;
+        glGenFramebuffers(1, &cubeMapFBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, cubeMapFBO);
+
+        GLuint cubeMap;
+        glGenTextures(1, &cubeMap);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMap);
+
+        for (GLuint i = 0; i < 6; ++i){
+//            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, 600, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        }
+
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+        for (GLuint i = 0; i < 6; ++i) {
+//            glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0 + i,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,cubeMap,0);
+        }
+
+        glFramebufferTexture(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,cubeMap,0);
+
+        uint32_t rbo;
+        glGenRenderbuffers(1,&rbo);
+        glBindRenderbuffer(GL_RENDERBUFFER,rbo);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
+            WX_CORE_ERROR("Framebuffer not complete!");
+        }
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        cubemap_t cubemap;
+        cubemap.fbo = cubeMapFBO;
+        cubemap.texture = cubeMap;
+        cubemap.width = width;
+        cubemap.height = height;
+        return cubemap;
+    }
+
     unordered_map<string,int> ShaderProgram::uniforms;
     unsigned int ShaderProgram::CreateShader(GLuint type,const char* source) {
         unsigned int shader = glCreateShader(type);
@@ -370,6 +537,9 @@ namespace wx {
     }
     void ShaderProgram::SetMat4(uint32_t pid,const string& _name, float *value) {
         glUniformMatrix4fv(FindUniformLocation(pid,_name),1,GL_FALSE,value);
+    }
+    void ShaderProgram::SetMat3(uint32_t pid,const string& _name, float *value) {
+        glUniformMatrix3fv(FindUniformLocation(pid,_name),1,GL_FALSE,value);
     }
     void ShaderProgram::SetVec4(uint32_t pid,const string& _name, float *value) {
         glUniform4fv(FindUniformLocation(pid,_name),1,value);

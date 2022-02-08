@@ -67,6 +67,10 @@ uniform sampler2D shadowMap[5];
 //点光源阴影贴图
 uniform samplerCube shadowCubeMap[5];
 
+//天空盒
+uniform int has_skybox;
+uniform samplerCube skyboxMap;
+
 //菲涅尔函数-计算镜面反射和漫反射系数
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
@@ -365,8 +369,13 @@ void main(){
         Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;
     }
 
-    vec3 ambient = vec3(0.03) * albedo.rgb * occlusion;
-    vec3 color = ambient + Lo;
+    vec3 ambient = vec3(0.03);
+    if(has_skybox==1){
+        vec3 I = normalize(v_WorldPos - cameraPos);
+        vec3 R = reflect(I, normalize(v_Normal));
+        ambient = texture(skyboxMap, R).rgb;
+    }
+    vec3 color = ambient * albedo.rgb * occlusion + Lo;
     color = color / (color + vec3(1.0));//HDR to LDR
     color = pow(color, vec3(1.0/2.2)); // LDR to Gamma2
 

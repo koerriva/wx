@@ -45,17 +45,17 @@ namespace wx {
 
                 //MoveForward
                 if(inputState->GetKeyDown(InputState::KeyCode::W)){
-                    camera->position += 1.f * camera->front * delta;
+                    camera->position += 2.f * camera->front * delta;
                 }
                 if(inputState->GetKeyDown(InputState::KeyCode::S)){
-                    camera->position += -1.f * camera->front * delta;
+                    camera->position += -2.f * camera->front * delta;
                 }
                 //MoveRight
                 if(inputState->GetKeyDown(InputState::KeyCode::D)){
-                    camera->position += 1.f * normalize(cross(camera->front, camera->up)) * delta;
+                    camera->position += 2.f * normalize(cross(camera->front, camera->up)) * delta;
                 }
                 if(inputState->GetKeyDown(InputState::KeyCode::A)){
-                    camera->position += -1.f * normalize(cross(camera->front, camera->up)) * delta;
+                    camera->position += -2.f * normalize(cross(camera->front, camera->up)) * delta;
                 }
                 //Rotation
                 vec2 direction{0};

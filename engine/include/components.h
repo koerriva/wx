@@ -99,6 +99,13 @@ namespace wx {
         uint32_t height;
     } shadow_map_t;
 
+    typedef struct cubemap_t {
+        uint32_t fbo;
+        uint32_t texture;
+        uint32_t width;
+        uint32_t height;
+    } cubemap_t;
+
     struct CastShadow{};
     struct ReceiveShadow{};
 
@@ -230,6 +237,19 @@ namespace wx {
         }
     };
 
+    struct Skybox{
+        cubemap_t cubemap;
+        vec3 sun_pos;
+        mat3 rot_stars;
+        TEXTURE tint;//the color of the sky on the half-sphere where the sun is. (time x height)
+        TEXTURE tint2;//the color of the sky on the opposite half-sphere. (time x height)
+        TEXTURE sun;//sun texture (radius x time)
+        TEXTURE moon;//moon texture (circular)
+        TEXTURE clouds1;//light clouds texture (spherical UV projection)
+        TEXTURE clouds2;//heavy clouds texture (spherical UV projection)
+        float weather = 0.5;//mixing factor (0.5 to 1.0)
+    };
+
     struct Spatial3d{
         std::string name;
         ::entity_id parent;
@@ -276,6 +296,18 @@ namespace wx {
     };
 
     struct DepthCubeShader{
+        uint32_t id;
+    };
+
+    struct SkyboxMapShader{
+        uint32_t id;
+    };
+
+    struct SkyboxShader {
+        uint32_t id;
+    };
+
+    struct SkydomeShader {
         uint32_t id;
     };
 

@@ -574,4 +574,326 @@ namespace wx {
         glGenerateMipmap(GL_TEXTURE_2D);
         return texture;
     }
+
+    Mesh Assets::LoadStaticModel(const char *filename){
+        using namespace tinygltf;
+        Model cmodel;
+        TinyGLTF loader;
+        std::string err;
+        std::string warn;
+
+        bool ret = false;
+        int len = 0;
+        const FileInfo& fileInfo = AssetsLoader::FileInfo(filename);
+        auto bytes = AssetsLoader::LoadRawData(filename, &len);
+        if(fileInfo.ext=="glb"){
+            ret = loader.LoadBinaryFromMemory(&cmodel,&err,&warn,bytes,fileInfo.size,"data");
+        } else if(fileInfo.ext=="gltf"){
+            ret = loader.LoadASCIIFromString(&cmodel, &err, &warn, reinterpret_cast<const char *>(bytes), len, "data");
+        }
+
+        if (!warn.empty()) {
+            WX_CORE_WARN("tinyglft Warn: {}",warn);
+        }
+
+        if (!err.empty()) {
+            WX_CORE_ERROR("tinyglft Err: {}",err);
+        }
+
+        if (!ret) {
+            WX_CORE_ERROR("Failed to parse glTF");
+            exit(-1002);
+        }
+
+        tinygltf::Mesh& cmesh = cmodel.meshes[0];
+        std::cout << "Mesh : " << cmesh.name << std::endl;
+        Mesh model;
+
+        for (auto& primitive:cmesh.primitives) {
+            Mesh::primitive_t mesh;
+            std::cout << "Upload Primitive " << std::endl;
+
+            glGenVertexArrays(1,&mesh.vao);
+            glBindVertexArray(mesh.vao);
+
+            uint32_t vbo = 0;
+
+            Accessor* position_accessor = nullptr;
+            Accessor* normal_accessor = nullptr;
+            Accessor* texcoord_accessor = nullptr;
+            Accessor* tangent_accessor = nullptr;
+            Accessor* joint_accessor = nullptr;
+            Accessor* weight_accessor = nullptr;
+            Accessor* indices_accessor = nullptr;
+
+            for (auto& attr:primitive.attributes) {
+                if(attr.first=="POSITION"){
+                    position_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="NORMAL"){
+                    normal_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="TEXCOORD_0"){
+                    texcoord_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="JOINTS_0"){
+                    joint_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="WEIGHTS_0"){
+                    weight_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+                if(attr.first=="TANGENT"){
+                    tangent_accessor = &cmodel.accessors[attr.second];
+                    continue;
+                }
+            }
+
+            if(position_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[position_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                int offset = position_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = position_accessor->count;
+                std::cout << "vertices : " << data_count << std::endl;
+                mesh.vertices_count = data_count;
+                int byte_size = bufferView->byteLength;
+
+                //vertices
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+            }
+
+            if(normal_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[normal_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                int offset = normal_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = normal_accessor->count;
+                int byte_size = bufferView->byteLength;
+
+                //vertices
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
+            }
+
+            if(texcoord_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[texcoord_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                int offset = texcoord_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = texcoord_accessor->count;
+                int byte_size = bufferView->byteLength;
+
+                //texcoord
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(2);
+                glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
+            }
+
+            if(primitive.indices>=0){
+                indices_accessor = &cmodel.accessors[primitive.indices];
+            }
+            if(indices_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[indices_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                int offset = indices_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = indices_accessor->count;
+                int byte_size = bufferView->byteLength;
+
+                mesh.indices_count = data_count;
+                mesh.indices_type = indices_accessor->componentType;
+
+                uint32_t ebo = 0 ;
+                glGenBuffers(1,&ebo);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+                glBufferData(GL_ELEMENT_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+            }
+
+            if(joint_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[joint_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                size_t offset = joint_accessor->byteOffset + bufferView->byteOffset;
+                size_t data_count = joint_accessor->count;
+                std::cout << "joints : " << data_count << std::endl;
+                size_t byte_size = sizeof(uvec4)*data_count;
+
+                std::vector<uint32_t> data;
+
+                if(joint_accessor->componentType==GL_UNSIGNED_SHORT){
+                    auto * ptr = (uint16_t*)(buffer->data.data()+offset);
+                    int strip = bufferView->byteStride/2;
+                    for (int i = 0; i < data_count; ++i) {
+                        uvec4 indices{*(ptr+i*strip),*(ptr+i*strip+1),*(ptr+i*strip+2),*(ptr+i*strip+3)};
+//                    std::cout << "j " << i << ":" << to_string(indices)  << std::endl;
+                        for (int j = 0; j < 4; ++j) {
+                            data.push_back(*(ptr+i*strip+j));
+                        }
+                    }
+                }
+
+                if(joint_accessor->componentType==GL_UNSIGNED_BYTE){
+                    auto * ptr = (uint8_t*)(buffer->data.data()+offset);
+                    for (int i = 0; i < data_count; ++i) {
+                        uvec4 indices{*(ptr+i*4),*(ptr+i*4+1),*(ptr+i*4+2),*(ptr+i*4+3)};
+//                    std::cout << "j " << i << ":" << to_string(indices) << std::endl;
+                        for (int j = 0; j < 4; ++j) {
+                            data.push_back(*(ptr+i*4+j));
+                        }
+                    }
+                }
+
+                //joints
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,data.data(),GL_STATIC_DRAW);
+                glEnableVertexAttribArray(3);
+                glVertexAttribIPointer(3,4,GL_UNSIGNED_INT,sizeof(uvec4),nullptr);
+            }
+
+            if(weight_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[weight_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                size_t offset = weight_accessor->byteOffset + bufferView->byteOffset;
+                size_t data_count = weight_accessor->count;
+                std::cout << "weights : " << data_count << std::endl;
+                size_t byte_size = sizeof(vec4)*data_count;
+
+                auto * ptr = (float*)(buffer->data.data()+offset);
+                std::vector<float> data;
+                for (int i = 0; i < data_count; ++i) {
+                    vec4 weights{*(ptr+i*4),*(ptr+i*4+1),*(ptr+i*4+2),*(ptr+i*4+3)};
+//                std::cout << "w" << i << ":" << to_string(weights) << std::endl;
+                    for (int j = 0; j < 4; ++j) {
+                        data.push_back(*(ptr+i*4+j));
+                    }
+                }
+
+                //weights
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,data.data(),GL_STATIC_DRAW);
+                glEnableVertexAttribArray(4);
+                glVertexAttribPointer(4,4,GL_FLOAT,GL_FALSE,sizeof(vec4),nullptr);
+            }
+
+            if(tangent_accessor){
+                BufferView* bufferView = &cmodel.bufferViews[tangent_accessor->bufferView];
+                Buffer* buffer = &cmodel.buffers[bufferView->buffer];
+
+                int offset = tangent_accessor->byteOffset + bufferView->byteOffset;
+                int data_count = tangent_accessor->count;
+                int byte_size = bufferView->byteLength;
+
+                //tangents
+                glGenBuffers(1,&vbo);
+                glBindBuffer(GL_ARRAY_BUFFER,vbo);
+                glBufferData(GL_ARRAY_BUFFER,byte_size,buffer->data.data()+offset,GL_STATIC_DRAW);
+                glEnableVertexAttribArray(5);
+                glVertexAttribPointer(5,4,GL_FLOAT,GL_FALSE,4*sizeof(float),nullptr);
+            }
+
+            glBindVertexArray(0);
+
+            if(primitive.material>-1){
+                Material* cmat = &cmodel.materials[primitive.material];
+                TextureInfo baseColorTextureInfo = cmat->pbrMetallicRoughness.baseColorTexture;
+                if(baseColorTextureInfo.index>-1){
+                    mesh.material.has_albedo_texture = 1;
+                    Texture* baseColorTexture = &cmodel.textures[baseColorTextureInfo.index];
+                    Sampler* sampler = &cmodel.samplers[baseColorTexture->sampler];
+                    Image* image = &cmodel.images[baseColorTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.albedo_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                TextureInfo metallicTextureInfo = cmat->pbrMetallicRoughness.metallicRoughnessTexture;
+                if(metallicTextureInfo.index>-1){
+                    mesh.material.has_metallic_roughness_texture = 1;
+                    Texture* metallicTexture = &cmodel.textures[metallicTextureInfo.index];
+                    Sampler* sampler = &cmodel.samplers[metallicTexture->sampler];
+                    Image* image = &cmodel.images[metallicTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.metallic_roughness_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                NormalTextureInfo normalTextureInfo = cmat->normalTexture;
+                if(normalTextureInfo.index>-1){
+                    mesh.material.has_normal_texture = 1;
+                    Texture* normalTexture = &cmodel.textures[normalTextureInfo.index];
+                    mesh.material.normal_scale = normalTextureInfo.scale;
+                    Sampler* sampler = &cmodel.samplers[normalTexture->sampler];
+                    Image* image = &cmodel.images[normalTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.normal_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                OcclusionTextureInfo occlusionTextureInfo = cmat->occlusionTexture;
+                if(occlusionTextureInfo.index>-1){
+                    mesh.material.has_occlusion_texture = 1;
+                    mesh.material.occlusion_strength = occlusionTextureInfo.strength;
+                    Texture* occlusionTexture = &cmodel.textures[occlusionTextureInfo.index];
+                    Sampler* sampler = &cmodel.samplers[occlusionTexture->sampler];
+                    Image* image = &cmodel.images[occlusionTexture->source];
+
+                    std::string& img_type = image->mimeType;
+
+                    ivec3 shape{image->width,image->height,image->component};
+                    int min_filter = sampler->minFilter;
+                    int mag_filter = sampler->magFilter;
+                    int warp_s = sampler->wrapS;
+                    int warp_t = sampler->wrapT;
+
+                    mesh.material.occlusion_texture = Assets::LoadTexture(shape,{min_filter,mag_filter},{warp_s,warp_t},image->image.data());
+                }
+
+                mesh.material.albedo_factor = make_vec4(cmat->pbrMetallicRoughness.baseColorFactor.data());
+                mesh.material.metallic_factor = cmat->pbrMetallicRoughness.metallicFactor;
+                mesh.material.roughness_factor = cmat->pbrMetallicRoughness.roughnessFactor;
+            }
+
+            model.primitives.push_back(mesh);
+        }
+
+        return model;
+    }
 }

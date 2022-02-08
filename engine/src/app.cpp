@@ -23,6 +23,12 @@ namespace wx {
         level_insert_share_resource(level,DepthShader{depthShader});
         uint32_t depthCubeShader = ShaderProgram::LoadShader("depth_cube", true);
         level_insert_share_resource(level,DepthCubeShader{depthCubeShader});
+        uint32_t skyboxMapShader = ShaderProgram::LoadShader("skybox_map",true);
+        level_insert_share_resource(level,SkyboxMapShader{skyboxMapShader});
+        uint32_t skyboxShader = ShaderProgram::LoadShader("skybox");
+        level_insert_share_resource(level,SkyboxShader{skyboxShader});
+        uint32_t skydomShader = ShaderProgram::LoadShader("skydome");
+        level_insert_share_resource(level,SkydomeShader{skydomShader});
     }
 
     App::App() {
@@ -40,6 +46,7 @@ namespace wx {
         level_register_component<Mesh>(level);
         level_register_component<Canvas>(level);
         level_register_component<Animator>(level);
+        level_register_component<Skybox>(level);
         level_register_component<Spatial3d>(level);
 
         engine_components.emplace_back(typeid(Camera).name());
@@ -54,6 +61,7 @@ namespace wx {
         engine_components.emplace_back(typeid(Mesh).name());
         engine_components.emplace_back(typeid(Canvas).name());
         engine_components.emplace_back(typeid(Animator).name());
+        engine_components.emplace_back(typeid(Skybox).name());
         engine_components.emplace_back(typeid(Spatial3d).name());
 
         level_register_system(level,context_setup_system, SYSTEM_NAME(context_setup_system));

@@ -14,6 +14,7 @@ namespace wx {
 
         wx::Camera camera{};
         camera.position = glm::vec3(0.0f,2.0f,10.0f);
+        app->Spawn(camera,wx::MainCamera{});
 
         wx::Light sun{};
         sun.type = wx::Light::directional;
@@ -25,21 +26,33 @@ namespace wx {
         sun.has_shadow_map = 1;
         sun.near_plane = -20.f;
         sun.far_plane = 40.f;
-
         sun.p = glm::ortho(-40.0f, 40.0f, -40.0f, 40.0f, sun.near_plane, sun.far_plane);;
         sun.v = glm::lookAt(sun.position, vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-
         app->Spawn(sun,CastShadow{},Sun{});
-        app->Spawn(camera,wx::MainCamera{});
 
-        Spatial3d spatial3D{.name="Planet01"};
+        Spatial3d Planet01{.name="Planet01"};
         Transform transform{.scale={10.f,10.f,10.f}};
         Mesh mesh{};
         mesh.name="Face01";
         mesh.primitives.push_back(Assets::UnitSubQuad(64));
+        app->Spawn(Planet01,transform,mesh,ReceiveShadow{},TerrainShape{});
 
-        quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-        app->Spawn(spatial3D,transform,mesh,ReceiveShadow{},TerrainShape{});
+        Skybox skybox{};
+        skybox.cubemap = TextureLoader::LoadRendererCubeMap(1024, 1024);
+        skybox.weather = 0.5;
+        skybox.sun_pos = sun.position;
+        skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
+
+        skybox.tint = TextureLoader::Load("skybox\\tint.png");
+        skybox.tint2 = TextureLoader::Load("skybox\\tint2.png");
+        skybox.sun = TextureLoader::Load("skybox\\sun.png");
+        skybox.moon = TextureLoader::Load("skybox\\moon.png");
+        skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
+        skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
+//        Mesh skybox_mesh = Assets::LoadStaticModel("model\\cube.gltf");
+        Mesh skybox_mesh{};
+        skybox_mesh.primitives.push_back(Assets::UnitCube(16));
+        app->Spawn(Spatial3d{.name="Skybox"},Transform{},skybox,skybox_mesh);
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);

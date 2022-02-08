@@ -21,9 +21,11 @@ namespace wx {
     //render
     void spatial_update_system(level* level,float delta);
     void render_update_system(level* level,float delta);
-    void render_shadow_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights);
-    void render_mesh_phase(level* level,float delta,std::vector<entity_id>& models,std::vector<entity_id>& lights,::entity_id camera);
-    void render_ui_phase(level* level,float delta,const std::vector<::entity_id>& items);
+    void render_skybox_phase(level* level,float delta);
+    void render_skydome_phase(level* level,float delta);
+    void render_shadow_phase(level* level,float delta);
+    void render_mesh_phase(level* level,float delta);
+    void render_ui_phase(level* level,float delta);
     void render_nuklear_phase(level* level,float delta);
     //animation
     void animator_update_system(level* level,float delta);
