@@ -50,12 +50,12 @@ void main()
     color = weather*mix(color_wo_sun,color_w_sun,dist*0.5+0.5);
 
     //Computing u and v for the clouds textures (spherical projection)
-//    float u = atan(pos_norm.z,pos_norm.x)/(2*PI);
-//    float v = asin(pos_norm.y)/PI;
+    float u = atan(pos_norm.z,pos_norm.x)/(2*PI);
+    float v = asin(pos_norm.y)/PI;
 
-    vec2 uv = SampleSphericalMap(pos_norm);
-    float u = uv.s;
-    float v = -uv.t;
+//    vec2 uv = SampleSphericalMap(pos_norm);
+//    float u = uv.s;
+//    float v = -uv.t;
 
     //Cloud color
     //color depending on the weather (shade of grey) *  (day or night) ?
