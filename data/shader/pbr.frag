@@ -305,14 +305,13 @@ void main(){
         if(light.state==0)continue;
 
         vec3 L = normalize(light.position - v_WorldPos); //入射光方向
-        vec3 H = normalize(V+L); //半高
         if(light.type==DIRECTIONAL_LIGHT){
             L = normalize(-light.direction);
-            H = V;
         }
+        vec3 H = normalize(V+L); //半程向量
         vec3 radiance = light.color * light.intensity;
         //计算阴影
-        float bias = max(0.005 * (1.0 - dot(normal, L)), 0.005);//shadow bias
+        float bias = max(0.01 * (1.0 - dot(normal, L)), 0.01);//shadow bias
         if(light.type==POINT_LIGHT){
             float distance = length(light.position - v_WorldPos);
 
