@@ -95,7 +95,7 @@ namespace wx {
                 lights.push_back(entity);
             }
             if(entity!=0 && level_has_components<Mesh,ReceiveShadow>(level,entity)){
-//                models.push_back(entity);
+                models.push_back(entity);
             }
             if(entity!=0 && level_has_components<Canvas>(level,entity)){
                 ui.push_back(entity);
@@ -110,9 +110,9 @@ namespace wx {
         }
 
 //        render_skydome_phase(level,delta);
-        render_skybox_phase(level,delta);
-//        render_shadow_phase(level,delta);
-//        render_mesh_phase(level,delta);
+//        render_skybox_phase(level,delta);
+        render_shadow_phase(level,delta);
+        render_mesh_phase(level,delta);
 //        render_ui_phase(level,delta);
 
         auto* frameState = level_get_share_resource<FrameState>(level);

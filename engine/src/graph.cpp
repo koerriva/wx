@@ -40,258 +40,42 @@ namespace wx {
         return vao;
     }
 
-    Mesh::primitive_t Assets::UnitCube(int subdivision) {
-        uint32_t vao,vbo;
+    Mesh::primitive_t Assets::GenMesh(SurfaceData &surfaceData) {
+        uint32_t vao,vbo,ebo;
         glGenVertexArrays(1,&vao);
         glBindVertexArray(vao);
 
-        std::vector<vec3> vertices;
-        std::vector<vec3> normals;
-        std::vector<vec2> texcoords;
-        std::vector<vec3> colors;
-
-        int step = subdivision/2;
-        float delta = 4.f/float(subdivision);
-        float td = 2.f/ float(subdivision);
-
-        const auto spherified  = [](vec3& p)->vec3 {
-            float x=p.x,y=p.y,z=p.z;
-            float xx = x*x;float yy = y*y;float zz = z*z;
-
-            x = x*sqrt(1.f-yy/2.f-zz/2.f+yy*zz/3.f);
-            y = y*sqrt(1.f-zz/2.f-xx/2.f+zz*xx/3.f);
-            z = z*sqrt(1.f-xx/2.f-yy/2.f+xx*yy/3.f);
-            return vec3{x,y,z};
-        };
-
-        //Z+ Z- , X+ X- , Y+ Y-
-        vec3 start[6] = {{-1.f,1.f,1.f},{1.f,1.f,-1.f}
-                ,{1.f,1.f,1.f},{-1.f,1.f,-1.f}
-                ,{-1.f,1.f,-1.f},{1.f,-1.f,1.f}
-        };
-        vec3 right[6] = {{1.f,0.f,0.f},{-1.f,0.f,0.f}
-                ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
-                ,{1.f,0.f,0.f},{-1.f,0.f,0.f}
-        };
-        vec3 up[6] = {{0.f,1.f,0.f},{0.f,1.f,0.f}
-                ,{0.f,1.f,0.f},{0.f,1.f,0.f}
-                ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
-        };
-
-        for (int i = 0; i < 6; ++i) {
-            for (int h = 0; h < step; ++h) {
-                for (int v = 0; v < step; ++v) {
-                    vec3 normal = cross(right[i],up[i]);
-                    vec3 v10 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];
-                    vec2 t10{float(v)*td,float(h)*td};
-
-                    vec3 v11 = start[i] + float(v)*delta*right[i]-float(h+1)*delta*up[i];
-                    vec2 t11{float(v)*td,float(h+1)*td};
-
-                    vec3 v12 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];
-                    vec2 t12{float(v+1)*td,float(h+1)*td};
-
-                    vec3 p0[3]={v10,v11,v12};
-                    for (auto & p:p0) {
-                        vertices.push_back(p);
-                        normals.push_back(normal);
-                    }
-                    vec2 t0[3]={t10,t11,t12};
-                    for (auto & t:t0) {
-                        texcoords.push_back(t);
-                    }
-
-                    vec3 v20 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];;
-                    vec2 t20{float(v)*td,float(h)*td};
-
-                    vec3 v21 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];;
-                    vec2 t21{float(v+1)*td,float(h+1)*td};
-
-                    vec3 v22 = start[i] + float(v+1)*delta*right[i]-float(h)*delta*up[i];;
-                    vec2 t22{float(v+1)*td,float(h)*td};
-
-                    vec3 p1[3]={v20,v21,v22};
-                    for (auto & p : p1) {
-                        vertices.push_back(p);
-                        normals.push_back(normal);
-                    }
-                    vec2 t1[3]={t20,t21,t22};
-                    for (auto & t : t1) {
-                        texcoords.push_back(t);
-                    }
-                }
-            }
-        }
-
         glGenBuffers(1,&vbo);
         glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, surfaceData.vertices.size() * 3 * sizeof(GLfloat), surfaceData.vertices.data(), GL_STATIC_DRAW);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glGenBuffers(1,&vbo);
         glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, normals.size() * 3 * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, surfaceData.normals.size() * 3 * sizeof(GLfloat), surfaceData.normals.data(), GL_STATIC_DRAW);
         glEnableVertexAttribArray(1);
         glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glGenBuffers(1,&vbo);
         glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, texcoords.size() * 2 * sizeof(GLfloat), texcoords.data(), GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, surfaceData.texCoords.size() * 2 * sizeof(GLfloat), surfaceData.texCoords.data(), GL_STATIC_DRAW);
         glEnableVertexAttribArray(2);
         glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glGenBuffers(1,&ebo);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,surfaceData.indices.size()*sizeof(GLushort), surfaceData.indices.data(),GL_STATIC_DRAW);
 
         glBindVertexArray(0);
 
         Mesh::primitive_t primitive;
-        primitive.vertices_count = vertices.size();
+        primitive.vertices_count = surfaceData.vertices.size();
+        primitive.indices_count = surfaceData.indices.size();
         primitive.vao = vao;
-        primitive.material.metallic_factor = 0.01;
-        primitive.material.roughness_factor = 0.99;
-        return primitive;
-    }
+        primitive.material.metallic_factor = 0.1;
+        primitive.material.roughness_factor = 0.9;
 
-    Mesh::primitive_t Assets::UnitSubQuad(int subdivision,float base_radius,size_t octaves
-                                          ,float frequency
-                                          ,float amplitude
-                                          ,float lacunarity
-                                          ,float persistence) {
-
-        SimplexNoise simplexNoise{frequency,amplitude,lacunarity,persistence};
-
-        uint32_t vao,vbo;
-        glGenVertexArrays(1,&vao);
-        glBindVertexArray(vao);
-
-        std::vector<vec3> vertices;
-        std::vector<vec3> normals;
-        std::vector<vec2> texcoords;
-        std::vector<vec3> colors;
-
-        int step = subdivision/2;
-        float delta = 4.f/float(subdivision);
-        float td = 2.f/ float(subdivision);
-
-        const auto spherified  = [](vec3& p)->vec3 {
-            float x=p.x,y=p.y,z=p.z;
-            float xx = x*x;float yy = y*y;float zz = z*z;
-
-            x = x*sqrt(1.f-yy/2.f-zz/2.f+yy*zz/3.f);
-            y = y*sqrt(1.f-zz/2.f-xx/2.f+zz*xx/3.f);
-            z = z*sqrt(1.f-xx/2.f-yy/2.f+xx*yy/3.f);
-            return vec3{x,y,z};
-        };
-
-        //Z+ Z- , X+ X- , Y+ Y-
-        vec3 start[6] = {{-1.f,1.f,1.f},{1.f,1.f,-1.f}
-        ,{1.f,1.f,1.f},{-1.f,1.f,-1.f}
-        ,{-1.f,1.f,-1.f},{1.f,-1.f,1.f}
-        };
-        vec3 right[6] = {{1.f,0.f,0.f},{-1.f,0.f,0.f}
-        ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
-        ,{1.f,0.f,0.f},{-1.f,0.f,0.f}
-        };
-        vec3 up[6] = {{0.f,1.f,0.f},{0.f,1.f,0.f}
-        ,{0.f,1.f,0.f},{0.f,1.f,0.f}
-        ,{0.f,0.f,-1.f},{0.f,0.f,1.f}
-        };
-
-        for (int i = 0; i < 6; ++i) {
-            for (int h = 0; h < step; ++h) {
-                for (int v = 0; v < step; ++v) {
-                    vec3 v10 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];
-                    vec2 t10{float(v)*td,float(h)*td};
-
-                    vec3 v11 = start[i] + float(v)*delta*right[i]-float(h+1)*delta*up[i];
-                    vec2 t11{float(v)*td,float(h+1)*td};
-
-                    vec3 v12 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];
-                    vec2 t12{float(v+1)*td,float(h+1)*td};
-
-                    vec3 p0[3]={spherified(v10),spherified(v11),spherified(v12)};
-                    for (auto & p:p0) {
-                        float r = simplexNoise.fractal(octaves,p.x,p.y,p.z);
-                        r = (r+1.f)*0.5f;
-                        if(r<base_radius){
-                            r = base_radius;
-                        }
-                        p = p*r;
-                        vertices.push_back(p);
-                    }
-                    vec2 t0[3]={t10,t11,t12};
-                    for (auto & t:t0) {
-                        texcoords.push_back(t);
-                    }
-
-                    vec3 v20 = start[i] + float(v)*delta*right[i]-float(h)*delta*up[i];;
-                    vec2 t20{float(v)*td,float(h)*td};
-
-                    vec3 v21 = start[i] + float(v+1)*delta*right[i]-float(h+1)*delta*up[i];;
-                    vec2 t21{float(v+1)*td,float(h+1)*td};
-
-                    vec3 v22 = start[i] + float(v+1)*delta*right[i]-float(h)*delta*up[i];;
-                    vec2 t22{float(v+1)*td,float(h)*td};
-
-                    vec3 p1[3]={spherified(v20),spherified(v21),spherified(v22)};
-                    for (auto & p : p1) {
-                        float r = simplexNoise.fractal(octaves,p.x,p.y,p.z);
-                        r = (r+1.f)*0.5f;
-                        if(r<base_radius){
-                            r = base_radius;
-                        }
-                        p = p*r;
-                        vertices.push_back(p);
-                    }
-                    vec2 t1[3]={t20,t21,t22};
-                    for (auto & t : t1) {
-                        texcoords.push_back(t);
-                    }
-
-                    vec3 f0_normal = triangleNormal(p0[0],p0[1],p0[2]);
-                    vec3 f1_normal = triangleNormal(p1[0],p1[1],p1[2]);
-                    vec3 normal = normalize(f0_normal + f1_normal);
-
-                    normals.push_back(normal);
-                    normals.push_back(normal);
-                    normals.push_back(normal);
-                    normals.push_back(normal);
-                    normals.push_back(normal);
-                    normals.push_back(normal);
-                }
-            }
-        }
-
-        glGenBuffers(1,&vbo);
-        glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, vertices.size() * 3 * sizeof(GLfloat), vertices.data(), GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glGenBuffers(1,&vbo);
-        glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, normals.size() * 3 * sizeof(GLfloat), normals.data(), GL_STATIC_DRAW);
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,3*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glGenBuffers(1,&vbo);
-        glBindBuffer(GL_ARRAY_BUFFER,vbo);
-        glBufferData(GL_ARRAY_BUFFER, texcoords.size() * 2 * sizeof(GLfloat), texcoords.data(), GL_STATIC_DRAW);
-        glEnableVertexAttribArray(2);
-        glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,2*sizeof(float),nullptr);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        glBindVertexArray(0);
-
-        Mesh::primitive_t primitive;
-        primitive.vertices_count = vertices.size();
-        primitive.vao = vao;
-        primitive.material.metallic_factor = 0.01;
-        primitive.material.roughness_factor = 0.99;
         return primitive;
     }
 
@@ -409,7 +193,7 @@ namespace wx {
 
         for (GLuint i = 0; i < 6; ++i){
 //            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, 600, 600, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
         }
 
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -419,10 +203,10 @@ namespace wx {
         glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
         for (GLuint i = 0; i < 6; ++i) {
-//            glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0 + i,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,cubeMap,0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0 + i,GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,cubeMap,0);
         }
 
-        glFramebufferTexture(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,cubeMap,0);
+//        glFramebufferTexture(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,cubeMap,0);
 
         uint32_t rbo;
         glGenRenderbuffers(1,&rbo);

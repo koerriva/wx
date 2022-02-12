@@ -13,7 +13,7 @@ namespace wx {
         app->InsertResource(WindowConfig{"Metaverse Engine 0.3.2",1440,900});
 
         wx::Camera camera{};
-        camera.position = glm::vec3(0.0f,2.0f,10.0f);
+        camera.position = glm::vec3(0.0f,2.0f,20.0f);
         app->Spawn(camera,wx::MainCamera{});
 
         wx::Light sun{};
@@ -21,7 +21,7 @@ namespace wx {
         sun.color = vec3{1.0f};
         sun.position = vec3(5.f,5.f,0.f);
         sun.direction = normalize(-sun.position);
-        sun.intensity = 10;
+        sun.intensity = 20;
         sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
         sun.has_shadow_map = 1;
         sun.near_plane = -20.f;
@@ -31,28 +31,28 @@ namespace wx {
         app->Spawn(sun,CastShadow{},Sun{});
 
         Spatial3d Planet01{.name="Planet01"};
-        Transform transform{.scale={10.f,10.f,10.f}};
-        Mesh mesh{};
-        mesh.name="Face01";
-        mesh.primitives.push_back(Assets::UnitSubQuad(64));
-        app->Spawn(Planet01,transform,mesh,ReceiveShadow{},TerrainShape{});
+        Transform transform{.scale={1.f,1.f,1.f}};
+        TerrainShape terrainShape{.resolution=30,.last_resolution=30};
+        terrain = new Terrain(&terrainShape);
+        Mesh terrainMesh = terrain->GetMesh();
+        app->Spawn(Planet01,transform,terrainMesh,ReceiveShadow{},terrainShape);
 
-        Skybox skybox{};
-        skybox.cubemap = TextureLoader::LoadRendererCubeMap(1024, 1024);
-        skybox.weather = 0.5;
-        skybox.sun_pos = sun.position;
-        skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
-
-        skybox.tint = TextureLoader::Load("skybox\\tint.png");
-        skybox.tint2 = TextureLoader::Load("skybox\\tint2.png");
-        skybox.sun = TextureLoader::Load("skybox\\sun.png");
-        skybox.moon = TextureLoader::Load("skybox\\moon.png");
-        skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
-        skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
-//        Mesh skybox_mesh = Assets::LoadStaticModel("model\\cube.gltf");
-        Mesh skybox_mesh{};
-        skybox_mesh.primitives.push_back(Assets::UnitCube(16));
-        app->Spawn(Spatial3d{.name="Skybox"},Transform{},skybox,skybox_mesh);
+//        Skybox skybox{};
+//        skybox.cubemap = TextureLoader::LoadRendererCubeMap(1024, 1024);
+//        skybox.weather = 0.5;
+//        skybox.sun_pos = sun.position;
+//        skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
+//
+//        skybox.tint = TextureLoader::Load("skybox\\tint.png");
+//        skybox.tint2 = TextureLoader::Load("skybox\\tint2.png");
+//        skybox.sun = TextureLoader::Load("skybox\\sun.png");
+//        skybox.moon = TextureLoader::Load("skybox\\moon.png");
+//        skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
+//        skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
+////        Mesh skybox_mesh = Assets::LoadStaticModel("model\\cube.gltf");
+//        Mesh skybox_mesh{};
+//        skybox_mesh.primitives.push_back(Assets::UnitCube(16));
+//        app->Spawn(Spatial3d{.name="Skybox"},Transform{},skybox,skybox_mesh);
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -120,79 +120,18 @@ namespace wx {
             primitive.material.albedo_factor = make_vec4(terrainShape->color);
         }
 
-        terrainTransform->scale = vec3{terrainShape->radius};
+//        terrainTransform->scale = vec3{terrainShape->radius};
 
-        if(terrainShape->las_octaves!=terrainShape->octaves){
-            WX_INFO("refresh terrain shape : octaves");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->las_octaves = terrainShape->octaves;
+        if(terrainShape->last_resolution!=terrainShape->resolution){
+            WX_INFO("update resolution : {}",terrainShape->resolution);
+            terrainShape->last_resolution = terrainShape->resolution;
+            terrain->Update(terrainShape,terrainMesh);
         }
 
-        if(terrainShape->last_frequency!=terrainShape->frequency){
-            WX_INFO("refresh terrain shape : frequency");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->last_frequency = terrainShape->frequency;
-        }
-
-        if(terrainShape->last_amplitude!=terrainShape->amplitude){
-            WX_INFO("refresh terrain shape : amplitude");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->last_amplitude = terrainShape->amplitude;
-        }
-
-        if(terrainShape->last_base_radius!=terrainShape->base_radius){
-            WX_INFO("refresh terrain shape : base_radius");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->last_base_radius = terrainShape->base_radius;
-        }
-
-        if(terrainShape->last_lacunarity!=terrainShape->lacunarity){
-            WX_INFO("refresh terrain shape : lacunarity");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->last_lacunarity = terrainShape->lacunarity;
-            terrainShape->persistence = terrainShape->lacunarity/2.f;
-        }
-
-        if(terrainShape->last_lod!=terrainShape->lod){
-            WX_INFO("refresh terrain shape : face number");
-            terrainMesh->primitives.clear();
-            int face_number = pow(2,terrainShape->lod-1)*4;
-            terrainMesh->primitives.push_back(Assets::UnitSubQuad(face_number,terrainShape->base_radius/terrainShape->radius,terrainShape->octaves
-                    ,terrainShape->frequency
-                    ,terrainShape->amplitude
-                    ,terrainShape->lacunarity
-                    ,terrainShape->persistence));
-            terrainShape->last_lod = terrainShape->lod;
+        if(terrainShape->last_radius!=terrainShape->radius){
+            WX_INFO("update radius : {}",terrainShape->radius);
+            terrainShape->last_radius = terrainShape->radius;
+            terrain->Update(terrainShape,terrainMesh);
         }
     }
 
@@ -226,19 +165,10 @@ namespace wx {
                      NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
         {
             nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_int(ctx, u8"faces:", 1, &terrainShape->lod, 100, 1, 1);
+            nk_property_int(ctx, u8"faces:", 2, &terrainShape->resolution, 120, 1, 1);
             nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"radius:", 1, &terrainShape->radius, 100, 1, 1);
+            nk_property_float(ctx, u8"radius:", 1, &terrainShape->radius, 100, 0.1, 0.1);
             nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"base radius:", 1, &terrainShape->base_radius, terrainShape->radius, 1, 1);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_int(ctx, u8"octaves:", 1, (int*)(&terrainShape->octaves), 7, 1, 1);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"frequency:", 0.0, &terrainShape->frequency, 4.f, 0.1, 0.1);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"amplitude:", 0.0, &terrainShape->amplitude, 4.f, 0.1, 0.1);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"lacunarity:", 0.0, &terrainShape->lacunarity, 4.f, 0.1, 0.1);
 
             nk_layout_row_dynamic(ctx, 20, 1);
             nk_label(ctx, u8"颜色:", NK_TEXT_LEFT);
