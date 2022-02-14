@@ -4,6 +4,9 @@
 
 #include "DummyGame.h"
 
+#define MAX_VERTEX_BUFFER (512 * 1024)
+#define MAX_ELEMENT_BUFFER (128 * 1024)
+
 namespace wx {
     struct Sun{};
 
@@ -31,6 +34,23 @@ namespace wx {
             }
         }
     }
+
+    void nuklear_update_system(level* level,float delta){
+        if(!level_has_share_resource<NuklearContext>(level))return;
+        auto nkcontext = level_get_share_resource<NuklearContext>(level);
+        auto glfw = (struct nk_glfw*)nkcontext->glfw;
+        auto ctx = (struct nk_context*)nkcontext->ctx;
+
+        nk_glfw3_new_frame(glfw);
+        /* GUI */
+        if (nk_begin(ctx, "Demo", nk_rect(10, 10, 230, 300),
+                     NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
+                     NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
+        {
+        }
+        nk_end(ctx);
+        nk_glfw3_render(glfw, NK_ANTI_ALIASING_ON, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
+    }
 }
 
 int main(int argc,char** argv) {
@@ -40,10 +60,11 @@ int main(int argc,char** argv) {
     system("chcp 65001");
 
     wx::Log::Init();
+    wx::AssetsLoader::Init();
+    
     WX_INFO("我的游戏引擎 0.2");
     auto* app = new wx::App();
     app->InsertResource(wx::WindowConfig{"我的游戏引擎 0.2.0"})
-    .Setup()
     .AddSystem(SYSTEM_NAME(wx::test_input_system),wx::test_input_system);
 
     wx::Canvas canvas{};
@@ -71,7 +92,7 @@ int main(int argc,char** argv) {
 
     app->Spawn(canvas);
     app->Spawn(camera,wx::MainCamera{});
-    app->SpawnFromModel("model/Sphere.gltf");
+    app->SpawnFromModel("model\\Sphere.gltf","Sphere01");
 
     app->Run();
 }
