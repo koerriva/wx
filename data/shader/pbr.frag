@@ -147,27 +147,31 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
     projCoords = projCoords * 0.5 + 0.5;
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
+    // 超出视锥区忽略
+    if(currentDepth>1.0){
+        return 0.0;
+    }
 
     float shadow = 0.0;
 
     //PCF 多重采样
-//    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
-//    for(int x = -1; x <= 1; ++x)
-//    {
-//        for(int y = -1; y <= 1; ++y)
-//        {
-//            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
-//            // 检查当前片段是否在阴影中
-//            shadow += currentDepth - bias > pcfDepth ? 0.91 : 0.0;
-//        }
-//    }
-//    shadow /= 9.0;
+    vec2 texSize = 1.0/textureSize(shadowMap,0);//0级纹理,原始大小
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texSize).r;
+            // 检查当前片段是否在阴影中
+            shadow += currentDepth - bias > pcfDepth ? 0.91 : 0.0;
+        }
+    }
+    shadow /= 9.0;
 
     //Poisson Sampling
-    for(int i=0;i<4;i++){
-        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
-        shadow += currentDepth - bias > psDepth ? 0.24 : 0.0;
-    }
+//    for(int i=0;i<4;i++){
+//        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[i]/700.0).r;
+//        shadow += currentDepth - bias > psDepth ? 0.24 : 0.0;
+//    }
 
     //Stratified Poisson Sampling
 //    for(int i=0;i<4;i++){
@@ -175,11 +179,6 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 //        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
 //        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
 //    }
-
-    // 超出视锥区忽略
-    if(projCoords.z>1.0){
-        return 0.0;
-    }
 
     return shadow;
 }
@@ -355,7 +354,7 @@ void main(){
         // Calculate normal distribution for specular BRDF.
         float NDF = DistributionGGX(N,H,roughness);
         // Calculate geometric attenuation for specular BRDF.
-        float G = GeometrySmith(V,L,H,roughness);
+        float G = GeometrySmith(N,V,L,roughness);
 
         vec3 kS = F; //光被反射的比例
         vec3 kD = vec3(1.0) - kS;//光被折射的比例
