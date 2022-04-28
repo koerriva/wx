@@ -1,5 +1,3 @@
-# 踏歌长行，梦想用在
-
 ## Dependencies Library
 + OpenGL4.5
 + freetype2
