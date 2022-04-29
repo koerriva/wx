@@ -145,6 +145,39 @@ namespace wx {
         return shadowMap;
     }
 
+    shadow_map_t TextureLoader::LoadVarianceDepthMap(uint32_t width, uint32_t height) {
+        GLuint depthMapFBO;
+        GLuint depthMapRBO;
+        glGenFramebuffers(1, &depthMapFBO);
+        glGenRenderbuffers(1, &depthMapRBO);
+        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+        glBindRenderbuffer(GL_RENDERBUFFER, depthMapRBO);
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthMapRBO);
+        glEnable(GL_DEPTH_TEST);
+
+        GLuint depthMap;
+        glGenTextures(1, &depthMap);
+        glBindTexture(GL_TEXTURE_2D, depthMap);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RG32F, width, height, 0, GL_RG, GL_FLOAT, NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        GLfloat borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, depthMap, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        shadow_map_t shadowMap;
+        shadowMap.fbo = depthMapFBO;
+        shadowMap.texture = depthMap;
+        shadowMap.width = width;
+        shadowMap.height = height;
+        return shadowMap;
+    }
+
     shadow_map_t TextureLoader::LoadDepthCubeMap(uint32_t width, uint32_t height) {
         GLuint depthMapFBO;
         glGenFramebuffers(1, &depthMapFBO);

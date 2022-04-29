@@ -33,11 +33,11 @@ namespace wx {
         sun.intensity = 10;
         sun.shadow_map = wx::TextureLoader::LoadDepthMap(4096, 4096);
         sun.has_shadow_map = 1;
-        sun.near_plane = -20.f;
-        sun.far_plane = 40.f;
+        sun.near_plane = -1.f;
+        sun.far_plane = 20.f;
 
-        sun.p = glm::ortho(-40.0f, 40.0f, -40.0f, 40.0f, sun.near_plane, sun.far_plane);;
-        sun.v = glm::lookAt(sun.position, vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        sun.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, sun.near_plane, sun.far_plane);
+        sun.v = glm::lookAt(sun.position, vec3(0.0f), glm::vec3(1.0f));
 
         app->Spawn(sun,CastShadow{},Sun{});
         app->Spawn(canvas);
@@ -47,9 +47,10 @@ namespace wx {
         app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
 //        app->SpawnFromModel("model\\cube.gltf","Cube01");
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
-//        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
-        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f)});
+        app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
+        app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f),.scale=vec3(0.2f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
+        app->SpawnFromModel("model\\Formal.gltf","Player01");
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -62,6 +63,7 @@ namespace wx {
         Light* sun = nullptr;
         Animator* snake_animator = nullptr;
         Animator* fly_animator = nullptr;
+        Animator* player_animator = nullptr;
 
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();
@@ -80,6 +82,9 @@ namespace wx {
                 }
                 if(spatial->name=="Fly01"){
                     fly_animator = animator;
+                }
+                if(spatial->name=="Player01"){
+                    player_animator = animator;
                 }
             }
 //            if(entity!=0 && level_has_components<Mesh,Transform>(level,entity)){
@@ -116,6 +121,15 @@ namespace wx {
                     fly_animator->Pause();
                 }
             }
+            if(player_animator){
+                if(player_animator->state!=Animator::play){
+                    WX_INFO("Play Player Animation");
+                    player_animator->Play("Walk");
+                }else{
+                    WX_INFO("Pause Player Animation");
+                    player_animator->Pause();
+                }
+            }
         }
 
         if(inputState->GetKeyPressed(InputState::L)){
@@ -127,6 +141,9 @@ namespace wx {
             if(fly_animator){
                 WX_INFO("Stop Fly Animation");
                 fly_animator->Stop();
+            }
+            if(player_animator){
+                WX_INFO("Stop Player Animation");
             }
         }
 

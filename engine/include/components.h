@@ -14,11 +14,15 @@ typedef uint32_t entity_id;
 typedef uint32_t VAO;
 typedef uint32_t TEXTURE;
 
-namespace wx {
+namespace wx
+{
     using namespace glm;
 
-    struct MainCamera{};
-    struct Camera {
+    struct MainCamera
+    {
+    };
+    struct Camera
+    {
         vec3 position{0.f, 0.f, 0.f};
         vec3 front{0.f, 0.f, -1.f};
         vec3 up{0.f, 1.f, 0.f};
@@ -26,53 +30,60 @@ namespace wx {
         float pitch = 0;
         float yaw = -90;
 
-        [[nodiscard]] quat GetRotation() const{
+        [[nodiscard]] quat GetRotation() const
+        {
             return quat{vec3(radians(yaw), radians(pitch), radians(0.f))};
         }
     };
 
-    struct Transform {
+    struct Transform
+    {
         vec3 position{0.0f};
-        quat rotation{1.0f,0.0f,0.0f,0.0f};
+        quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
         vec3 scale{1.0f};
 
-        [[nodiscard]] mat4 GetLocalMatrix() const {
-            mat4 T = translate(mat4{1.0f},position);
+        [[nodiscard]] mat4 GetLocalMatrix() const
+        {
+            mat4 T = translate(mat4{1.0f}, position);
             mat4 R = mat4_cast(rotation);
-            mat4 S = glm::scale(mat4{1.0f},scale);
-            return T*R*S;
+            mat4 S = glm::scale(mat4{1.0f}, scale);
+            return T * R * S;
         }
 
-//        [[nodiscard]] mat4 GetGlobalMatrix() const {
-//            return matrix;
-//            mat4 local = GetLocalMatrix();
-//
-//            if(has_parent){
-//                return parent->GetGlobalMatrix()*local;
-//            }else{
-//                return local;
-//            }
-//        }
+        //        [[nodiscard]] mat4 GetGlobalMatrix() const {
+        //            return matrix;
+        //            mat4 local = GetLocalMatrix();
+        //
+        //            if(has_parent){
+        //                return parent->GetGlobalMatrix()*local;
+        //            }else{
+        //                return local;
+        //            }
+        //        }
     };
 
-    struct AnimatedTransform {
+    struct AnimatedTransform
+    {
         vec3 position{0.0f};
-        quat rotation{1.0f,0.0f,0.0f,0.0f};
+        quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
         vec3 scale{1.0f};
 
-        [[nodiscard]] mat4 GetLocalMatrix() const {
-            mat4 T = translate(mat4{1.0f},position);
+        [[nodiscard]] mat4 GetLocalMatrix() const
+        {
+            mat4 T = translate(mat4{1.0f}, position);
             mat4 R = mat4_cast(rotation);
-            mat4 S = glm::scale(mat4{1.0f},scale);
-            return T*R*S;
+            mat4 S = glm::scale(mat4{1.0f}, scale);
+            return T * R * S;
         }
 
-        static AnimatedTransform From(Transform *pTransform) {
-            return AnimatedTransform{.position=pTransform->position,.rotation=pTransform->rotation,.scale=pTransform->scale};
+        static AnimatedTransform From(Transform *pTransform)
+        {
+            return AnimatedTransform{.position = pTransform->position, .rotation = pTransform->rotation, .scale = pTransform->scale};
         }
     };
 
-    typedef struct material_t {
+    typedef struct material_t
+    {
         vec4 albedo_factor{1.f};
         int has_albedo_texture = 0;
         uint32_t albedo_texture;
@@ -87,41 +98,53 @@ namespace wx {
         int has_metallic_roughness_texture = 0;
         uint32_t metallic_roughness_texture;
 
-        int has_normal_texture=0;
+        int has_normal_texture = 0;
         uint32_t normal_texture;
         double normal_scale = 1.0;
     } material_t;
 
-    typedef struct shadow_map_t{
+    typedef struct shadow_map_t
+    {
         uint32_t fbo;
         uint32_t texture;
         uint32_t width;
         uint32_t height;
     } shadow_map_t;
 
-    typedef struct cubemap_t {
+    typedef struct cubemap_t
+    {
         uint32_t fbo;
         uint32_t texture;
         uint32_t width;
         uint32_t height;
     } cubemap_t;
 
-    struct CastShadow{};
-    struct ReceiveShadow{};
+    struct CastShadow
+    {
+    };
+    struct ReceiveShadow
+    {
+    };
 
-    struct Light {
-        enum Type{
-            point = 0, spot, directional, ambient
+    struct Light
+    {
+        enum Type
+        {
+            point = 0,
+            spot,
+            directional,
+            ambient
         };
 
-        typedef struct {
+        typedef struct
+        {
             float constant;
             float linear;
             float exponent;
         } attenuation_t;
 
         Type type;
-        int state;//0-关闭,1-开启
+        int state; //0-关闭,1-开启
         vec3 color;
         vec3 position;
         vec3 direction;
@@ -137,18 +160,23 @@ namespace wx {
         float far_plane;
     };
 
-    struct Joint{};
+    struct Joint
+    {
+    };
 #define MAX_JOINT_COUNT 64
-    struct Skin {
+    struct Skin
+    {
         std::string name;
         int joints_count = 0;
         entity_id joints[MAX_JOINT_COUNT]{};
         mat4 inverse_bind_matrices[MAX_JOINT_COUNT]{};
     };
 
-    struct Mesh{
+    struct Mesh
+    {
         std::string name;
-        struct primitive_t {
+        struct primitive_t
+        {
             VAO vao{};
             int vertices_count = 0;
             int indices_count = 0;
@@ -158,19 +186,23 @@ namespace wx {
         std::vector<primitive_t> primitives;
     };
 
-    typedef struct keyframe_t {
+    typedef struct keyframe_t
+    {
         float time = 0;
         vec3 translation{0};
-        quat rotation{1,0,0,0};
+        quat rotation{1, 0, 0, 0};
         vec3 scale{1};
     } keyframe_t;
 
+#define MAX_ANIMATION_COUNT 100
+#define MAX_CHANNEL_COUNT 240
 #define MAX_KEYFRAME_COUNT 120
 
-    typedef struct channel_t {
+    typedef struct channel_t
+    {
         int keyframe_count = 0;
-        keyframe_t keyframe[120]{};
-        int interpolation = 0;//0-liber,1-step,2-cubic
+        keyframe_t keyframe[MAX_KEYFRAME_COUNT]{};
+        int interpolation = 0; //0-liber,1-step,2-cubic
         bool has_translation = false;
         bool has_rotation = false;
         bool has_scale = false;
@@ -178,164 +210,254 @@ namespace wx {
         ::entity_id target = 0;
     } channel_t;
 
-    typedef struct animation_t {
+    typedef struct animation_t
+    {
         int channel_count = 0;
-        channel_t channels[40]{};
+        channel_t channels[MAX_CHANNEL_COUNT]{};
         char name[45]{0};
     } animation_t;
 
-    struct Canvas {
+    struct Canvas
+    {
         VAO vao;
         TEXTURE texture;
         vec2 position{0};
         vec2 size{0};
     };
 
-    struct HUD {
-
+    struct HUD
+    {
     };
 
-    struct Animator {
-        enum State{
-            stop=0,play,pause
+    struct Animator
+    {
+        enum State
+        {
+            stop = 0,
+            play,
+            pause
         };
-        enum PlayState{
-            begin=0,playing,end
+        enum PlayState
+        {
+            begin = 0,
+            playing,
+            end
         };
-        static const int MAX_ANIMATION_COUNT=20;
-        static const int MAX_CHANNEL_COUNT=10;
-        float currTime[MAX_ANIMATION_COUNT] = {0};
-        keyframe_t * prevFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
-        keyframe_t * nextFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
 
-        State state = stop;//0-stop,1-play,2-pause
+        float currTime[MAX_ANIMATION_COUNT] = {0};
+        keyframe_t *prevFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
+        keyframe_t *nextFrame[MAX_ANIMATION_COUNT][MAX_CHANNEL_COUNT] = {nullptr};
+
+        State state = stop; //0-stop,1-play,2-pause
         PlayState playState = end;
         bool loop = false;
         std::string playingAnimation;
         std::vector<animation_t> animations;
 
-        void Play(){
+        void Play()
+        {
             Play("");
         }
 
-        void Play(const std::string& name,bool b_loop= true){
+        void Play(const std::string &name, bool b_loop = true)
+        {
             state = play;
             playState = begin;
             this->loop = b_loop;
             playingAnimation = name;
         }
 
-        void Pause(){
-            state=pause;
+        void Pause()
+        {
+            state = pause;
         }
 
-        void Stop(){
-            state=stop;
+        void Stop()
+        {
+            state = stop;
             playState = end;
             this->loop = false;
             playingAnimation = "";
         }
     };
 
-    struct Skybox{
+    struct Skybox
+    {
         cubemap_t cubemap;
         vec3 sun_pos;
         mat3 rot_stars;
-        TEXTURE tint;//the color of the sky on the half-sphere where the sun is. (time x height)
-        TEXTURE tint2;//the color of the sky on the opposite half-sphere. (time x height)
-        TEXTURE sun;//sun texture (radius x time)
-        TEXTURE moon;//moon texture (circular)
-        TEXTURE clouds1;//light clouds texture (spherical UV projection)
-        TEXTURE clouds2;//heavy clouds texture (spherical UV projection)
-        float weather = 0.5;//mixing factor (0.5 to 1.0)
+        TEXTURE tint;        //the color of the sky on the half-sphere where the sun is. (time x height)
+        TEXTURE tint2;       //the color of the sky on the opposite half-sphere. (time x height)
+        TEXTURE sun;         //sun texture (radius x time)
+        TEXTURE moon;        //moon texture (circular)
+        TEXTURE clouds1;     //light clouds texture (spherical UV projection)
+        TEXTURE clouds2;     //heavy clouds texture (spherical UV projection)
+        float weather = 0.5; //mixing factor (0.5 to 1.0)
     };
 
-    struct Spatial3d{
+    struct Spatial3d
+    {
         std::string name;
         ::entity_id parent;
         std::vector<entity_id> children;
     };
 
     //resource
-    struct VPMatrices {
+    struct VPMatrices
+    {
         mat4 view{1.0f};
         mat4 project{1.0f};
         mat4 ortho{1.0f};
     };
-    struct FrameState{
-        float delta_time=0.0f;
-        float total_time=0.0f;
-        int total_count=0.0f;
+    struct FrameState
+    {
+        float delta_time = 0.0f;
+        float total_time = 0.0f;
+        int total_count = 0.0f;
     };
 
-    struct RenderState{
-        enum RenderMode {
-            Shader,Wireframe
+    struct RenderState
+    {
+        enum RenderMode
+        {
+            Shader,
+            Wireframe
         };
         RenderMode mode = Shader;
     };
 
-    struct PBRShader{
+    struct PBRShader
+    {
         uint32_t id;
     };
 
-    struct TerrainShader {
+    struct TerrainShader
+    {
         uint32_t id;
     };
 
-    struct FlatShader{
+    struct FlatShader
+    {
         uint32_t id;
     };
 
-    struct FontShader{
+    struct FontShader
+    {
         uint32_t id;
     };
 
-    struct DepthShader{
+    struct DepthShader
+    {
         uint32_t id;
     };
 
-    struct DepthCubeShader{
+    struct DepthCubeShader
+    {
         uint32_t id;
     };
 
-    struct SkyboxMapShader{
+    struct DepthVarianceShader
+    {
         uint32_t id;
     };
 
-    struct SkyboxShader {
+    struct SkyboxMapShader
+    {
         uint32_t id;
     };
 
-    struct SkydomeShader {
+    struct SkyboxShader
+    {
         uint32_t id;
     };
 
-    struct WindowConfig {
+    struct SkydomeShader
+    {
+        uint32_t id;
+    };
+
+    struct WindowConfig
+    {
         std::string title;
-        int width=1280;
-        int height=720;
+        int width = 1280;
+        int height = 720;
         bool vSync = true;
     };
 
-    struct InputState {
+    struct InputState
+    {
         const float cursor_sensitivity = 0.05;
-        enum KeyCode {
-            ESC = 256,ENTER,TAB,
-            RIGHT=262,LEFT,DOWN,UP,
+        enum KeyCode
+        {
+            ESC = 256,
+            ENTER,
+            TAB,
+            RIGHT = 262,
+            LEFT,
+            DOWN,
+            UP,
             F1 = 290,
-            F2,F3,F4,F5,F6,F7,F8,F9,F10,F11,F12,
-            Num0 = 48,Num1,Num2,Num3,Num4,Num5,Num6,Num7,Num8,Num9,
-            A=65,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z
+            F2,
+            F3,
+            F4,
+            F5,
+            F6,
+            F7,
+            F8,
+            F9,
+            F10,
+            F11,
+            F12,
+            Num0 = 48,
+            Num1,
+            Num2,
+            Num3,
+            Num4,
+            Num5,
+            Num6,
+            Num7,
+            Num8,
+            Num9,
+            A = 65,
+            B,
+            C,
+            D,
+            E,
+            F,
+            G,
+            H,
+            I,
+            J,
+            K,
+            L,
+            M,
+            N,
+            O,
+            P,
+            Q,
+            R,
+            S,
+            T,
+            U,
+            V,
+            W,
+            X,
+            Y,
+            Z
         };
 
-        enum MouseCode {
+        enum MouseCode
+        {
             M_LEFT = 0,
-            M_RIGHT = 1,M_MID=2
+            M_RIGHT = 1,
+            M_MID = 2
         };
 
-        enum KeyState{
-            RELEASE=0,PRESS,REPEAT,//GLFW_PRESS=1,GLFW_RELEASE=0
+        enum KeyState
+        {
+            RELEASE = 0,
+            PRESS,
+            REPEAT, //GLFW_PRESS=1,GLFW_RELEASE=0
         };
 
         int last_key_state[349] = {0};
@@ -347,30 +469,36 @@ namespace wx {
         vec2 last_cursor_pos{0};
         vec2 curr_cursor_pos{0};
 
-        bool GetKeyPressed(int key){
-            return last_key_state[key]==PRESS&&curr_key_state[key]==RELEASE;
+        bool GetKeyPressed(int key)
+        {
+            return last_key_state[key] == PRESS && curr_key_state[key] == RELEASE;
         }
 
-        bool GetKeyDown(int key){
-            return curr_key_state[key]==PRESS;
+        bool GetKeyDown(int key)
+        {
+            return curr_key_state[key] == PRESS;
         }
 
-        bool GetKeyUp(int key){
-            return curr_key_state[key]==RELEASE;
+        bool GetKeyUp(int key)
+        {
+            return curr_key_state[key] == RELEASE;
         }
 
-        bool GetMouseButtonPressed(int btn) {
-            return curr_button_state[btn]==PRESS;
+        bool GetMouseButtonPressed(int btn)
+        {
+            return curr_button_state[btn] == PRESS;
         }
 
-        [[nodiscard]] vec2 GetCursorOffset() const{
-            return (curr_cursor_pos-last_cursor_pos)*cursor_sensitivity;
+        [[nodiscard]] vec2 GetCursorOffset() const
+        {
+            return (curr_cursor_pos - last_cursor_pos) * cursor_sensitivity;
         }
     };
 
-    struct NuklearContext{
-        void* glfw;
-        void* ctx;
+    struct NuklearContext
+    {
+        void *glfw;
+        void *ctx;
     };
 }
 #endif //WX_COMPONENTS_H

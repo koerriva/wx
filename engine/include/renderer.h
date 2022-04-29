@@ -44,6 +44,8 @@ namespace wx {
 
         static shadow_map_t LoadDepthMap(uint32_t width, uint32_t height);
 
+        static shadow_map_t LoadVarianceDepthMap(uint32_t width, uint32_t height);
+
         static shadow_map_t LoadDepthCubeMap(uint32_t width, uint32_t height);
 
         static cubemap_t LoadRendererCubeMap(uint32_t width, uint32_t height);

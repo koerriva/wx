@@ -147,10 +147,6 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
     projCoords = projCoords * 0.5 + 0.5;
     // 取得当前片段在光源视角下的深度
     float currentDepth = projCoords.z;
-    // 超出视锥区忽略
-    if(currentDepth>1.0){
-        return 0.0;
-    }
 
     float shadow = 0.0;
 
@@ -179,6 +175,11 @@ float CalcDirLightShadow(sampler2D shadowMap,vec4 fragPosLightSpace,float bias)
 //        float psDepth = texture(shadowMap, projCoords.xy + poissonDisk[index]/700.0).r;
 //        shadow += currentDepth - bias > psDepth ? 0.2 : 0.0;
 //    }
+
+    // 超出视锥区忽略
+    if(currentDepth>1.0){
+        shadow = 0.0;
+    }
 
     return shadow;
 }
@@ -297,8 +298,6 @@ void main(){
     vec3 F0 = vec3(0.04);//非金属材质默认0.04
     F0 = mix(F0,albedo.rgb,metallic);
 
-    float shadow_factor = 1.0;
-
     for(int i=0;i<light_num;i++){
         Light light = lights[i];
         if(light.state==0)continue;
@@ -361,7 +360,7 @@ void main(){
         kD *= 1 - metallic;
         vec3 diffuseBRDF = kD * albedo.rgb;
 
-        vec3 specularBRDF = (NDF * G * F)/max(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0),0.00000001);
+        vec3 specularBRDF = (NDF * G * F)/(4.0 * max(dot(N,V),0.0) * max(dot(N,L),0.0) + 0.00000001);
 
         float NdotL = max(dot(N,L),0.0);
         Lo += (diffuseBRDF/PI + specularBRDF) * radiance * NdotL;

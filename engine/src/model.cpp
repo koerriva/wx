@@ -485,6 +485,7 @@ namespace wx {
             auto root_spatial = level_get_component<Spatial3d>(scene,root);
             auto root_animator = level_add_component(scene,root,Animator{});
 
+            std::cout << "Animations : " << cmodel.animations.size() << std::endl;
             for (auto& canimation:cmodel.animations) {
                 std::cout << "Animation : " << canimation.name << std::endl;
 
@@ -496,6 +497,7 @@ namespace wx {
                     strcpy(anim.name,canimation.name.data());
                 }
                 anim.channel_count = 0;
+                std::cout << "Channels : " << canimation.channels.size() << std::endl;
                 for (auto& cchannel:canimation.channels) {
                     auto& channel = anim.channels[anim.channel_count++];
                     AnimationSampler* sampler = &canimation.samplers[cchannel.sampler];
