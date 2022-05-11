@@ -32,7 +32,7 @@ namespace wx {
     public:
         static uint32_t UnitQuad();
         static Mesh::primitive_t GenMesh(SurfaceData& surfaceData);
-        static entity_id LoadAnimateModel(level* level,const char *filename,const char *name="",const Transform& transform={});
+        static entity_id LoadAnimateModel(level* level,const char *filename,const char *name="",Transform transform={});
         static Mesh LoadStaticModel(const char *filename);
         static uint32_t LoadTexture(ivec3 shape,ivec2 filter,ivec2 warp,const unsigned char *buffer);
     };

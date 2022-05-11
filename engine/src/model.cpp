@@ -8,8 +8,8 @@
 #include "glm/gtx/string_cast.hpp"
 #include "glad/glad.h"
 
-#define TINYGLTF_USE_CPP14
-#define TINYGLTF_USE_RAPIDJSON
+//#define TINYGLTF_USE_CPP14
+//#define TINYGLTF_USE_RAPIDJSON
 #define TINYGLTF_IMPLEMENTATION
 #include "tiny_gltf.h"
 
@@ -413,7 +413,9 @@ namespace wx {
 
     ::entity_id Assets::LoadAnimateModel(level* scene,const char *filename
                                          ,const char *name
-                                         ,const Transform& transform) {
+                                         ,Transform transform) {
+
+        WX_INFO("load model {}",filename);
         using namespace tinygltf;
 
         Model cmodel;
@@ -426,7 +428,7 @@ namespace wx {
         const FileInfo& fileInfo = AssetsLoader::FileInfo(filename);
         auto bytes = AssetsLoader::LoadRawData(filename, &len);
         if(fileInfo.ext=="glb"){
-            ret = loader.LoadBinaryFromMemory(&cmodel,&err,&warn,bytes,fileInfo.size,"data");
+            ret = loader.LoadBinaryFromMemory(&cmodel, &err, &warn, bytes, fileInfo.size,"data");
         } else if(fileInfo.ext=="gltf"){
             ret = loader.LoadASCIIFromString(&cmodel, &err, &warn, reinterpret_cast<const char *>(bytes), len, "data");
         }
@@ -555,7 +557,7 @@ namespace wx {
         uint32_t texture;
 
         char buff[100]={0};
-        sprintf(buff,"Image Info width=%d, height=%d, channels=%d\0",width,height,comp);
+        sprintf(buff,"Image Info width=%d, height=%d, channels=%d\n",width,height,comp);
         std::cout << buff << std::endl;
 
         glGenTextures(1,&texture);

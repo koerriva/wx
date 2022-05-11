@@ -72,11 +72,7 @@ namespace wx {
             return *this;
         }
 
-        App& SpawnFromModel(const std::string& model_file,const std::string& name="",const Transform& transform={}){
-            std::string filename = model_file;
-            Assets::LoadAnimateModel(level,filename.c_str(),name.c_str(),transform);
-            return *this;
-        }
+        App& SpawnFromModel(const std::string& model_file,const std::string& name="",Transform transform={});
 
         App& AddSystem(const char* name,system_t system);
 

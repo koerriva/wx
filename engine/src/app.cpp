@@ -102,6 +102,11 @@ namespace wx
         level_insert_share_resource(level, nuklearContext);
     }
 
+    App& App::SpawnFromModel(const std::string& model_file,const std::string& name,Transform transform){
+        Assets::LoadAnimateModel(level,model_file.c_str(),name.c_str(),transform);
+        return *this;
+    }
+
     App &App::AddSystem(const char *name, system_t system)
     {
         level_register_system(level, system, name);

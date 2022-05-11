@@ -6,6 +6,7 @@
 + glfw3
 + glm
 + spdlog
++ stb
 
 ## Description
 

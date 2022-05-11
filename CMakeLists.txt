@@ -6,6 +6,8 @@ set(CMAKE_C_STANDARD 11)
 #
 #set(CMAKE_CXX_FLAGS "-Wno-narrowing")
 #set(CMAKE_CXX_FLAGS "-fpermissive -std=c++0x -fms-extensions")
+#set(CMAKE_CXX_FLAGS "-Wl,--stack,4194304")
+set(CMAKE_CXX_FLAGS "-Wl,--stack,10000000")
 
 # 查找spdlog 【重要！！！，不查找将导致进入头文件模式，编译时间缓慢】
 find_package(spdlog REQUIRED)
