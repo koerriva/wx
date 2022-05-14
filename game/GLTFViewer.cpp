@@ -48,13 +48,15 @@ namespace wx {
         app->Spawn(camera,wx::MainCamera{});
 
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
-        app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+        auto fly01_entity = app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
+        app->AddComponent(fly01_entity,LuaScript{"script\\enemy.controller.lua"});
 //        app->SpawnFromModel("model\\cube.gltf","Cube01");
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
         app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
         app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f),.scale=vec3(0.2f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
-        app->SpawnFromModel("model\\Formal.gltf","Player01");
+        auto player01_entity = app->SpawnFromModel("model\\Formal.gltf","Player01");
+        app->AddComponent(player01_entity,LuaScript{"script\\player.controller.lua"});
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -220,6 +222,7 @@ int main(int argc,char** argv) {
 
     wx::Log::Init();
     wx::AssetsLoader::Init();
+    wx::ScriptEngine::Init();
 
     WX_INFO("资源加载完成");
     auto* app = new wx::App();

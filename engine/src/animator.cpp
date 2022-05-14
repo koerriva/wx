@@ -9,6 +9,10 @@ namespace wx {
         return prev+interp*(next-prev);
     }
 
+    void animator_setup_system(level* level, float delta){
+        
+    }
+
     void animator_update_system(level* level,float delta){
         auto entities_iter = level->entities.begin();
         auto entities_begin = level->entities.begin();

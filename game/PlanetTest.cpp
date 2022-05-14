@@ -188,6 +188,7 @@ int main(int argc,char** argv) {
 
     wx::Log::Init();
     wx::AssetsLoader::Init();
+    wx::ScriptEngine::Init();
 
     WX_INFO("资源加载完成");
     auto* app = new wx::App();

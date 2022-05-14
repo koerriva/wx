@@ -9,6 +9,11 @@
 namespace wx {
     AssetsLoader* AssetsLoader::_instance = nullptr;
 
+    AssetsLoader::~AssetsLoader(){
+        WX_CORE_TRACE("Drop AssetsLoader");
+        Cleanup();
+    }
+
     void AssetsLoader::file_collector(const directory_entry &entry) {
         if(entry.is_directory()){
             WX_CORE_INFO("Dir {}",entry.path().string());

@@ -16,6 +16,7 @@
 #include "ecs.h"
 #include "window.h"
 #include "renderer.h"
+#include "lua_engine.hpp"
 
 namespace wx {
     using namespace std::chrono;
@@ -64,15 +65,27 @@ namespace wx {
         App();
 
         template<typename... T>
-        App& Spawn(T ...components) {
+        ::entity_id Spawn(T ...components) {
             ::entity_id entity = create_entity(level);
 
             SpawnBundle(unpack(entity,components)...);
 
-            return *this;
+            return entity;
         }
 
-        App& SpawnFromModel(const std::string& model_file,const std::string& name="",Transform transform={});
+        ::entity_id SpawnFromModel(const std::string& model_file,const std::string& name="",Transform transform={});
+
+        template<typename T>
+        ::entity_id AddComponent(::entity_id entity,T component){
+            level_add_component<T>(level,entity,component);
+            return entity;
+        }
+
+        template<typename T>
+        ::entity_id RemoveComponent(::entity_id entity,T component){
+            level_remove_component<T>(level,entity,component);
+            return entity;
+        }
 
         App& AddSystem(const char* name,system_t system);
 

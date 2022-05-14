@@ -53,6 +53,7 @@ namespace wx
         level_register_component<Animator>(level);
         level_register_component<Skybox>(level);
         level_register_component<Spatial3d>(level);
+        level_register_component<LuaScript>(level);
 
         engine_components.emplace_back(typeid(Camera).name());
         engine_components.emplace_back(typeid(MainCamera).name());
@@ -68,19 +69,24 @@ namespace wx
         engine_components.emplace_back(typeid(Animator).name());
         engine_components.emplace_back(typeid(Skybox).name());
         engine_components.emplace_back(typeid(Spatial3d).name());
+        engine_components.emplace_back(typeid(LuaScript).name());
 
         level_register_system(level, context_setup_system, SYSTEM_NAME(context_setup_system));
         level_register_system(level, input_update_system, SYSTEM_NAME(input_update_system));
         level_register_system(level, camera_update_system, SYSTEM_NAME(camera_update_system));
+        level_register_system(level, animator_update_system, SYSTEM_NAME(animator_setup_system));
         level_register_system(level, animator_update_system, SYSTEM_NAME(animator_update_system));
         level_register_system(level, spatial_update_system, SYSTEM_NAME(spatial_update_system));
         level_register_system(level, render_update_system, SYSTEM_NAME(render_update_system));
         level_register_system(level, nuklear_update_system, SYSTEM_NAME(nuklear_update_system));
         level_register_system(level, window_update_system, SYSTEM_NAME(window_update_system));
+        level_register_system(level, script_setup_system, SYSTEM_NAME(script_setup_system));
+        level_register_system(level, script_update_system, SYSTEM_NAME(script_update_system));
 
         engine_startup_systems.emplace_back(SYSTEM_NAME(context_setup_system));
-        engine_startup_systems.emplace_back(SYSTEM_NAME(animator_update_system));
+        engine_startup_systems.emplace_back(SYSTEM_NAME(animator_setup_system));
         engine_startup_systems.emplace_back(SYSTEM_NAME(spatial_update_system));
+        engine_startup_systems.emplace_back(SYSTEM_NAME(script_setup_system));
 
         engine_systems.emplace_back(SYSTEM_NAME(input_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(camera_update_system));
@@ -89,6 +95,7 @@ namespace wx
         engine_systems.emplace_back(SYSTEM_NAME(render_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(nuklear_update_system));
         engine_systems.emplace_back(SYSTEM_NAME(window_update_system));
+        engine_systems.emplace_back(SYSTEM_NAME(script_update_system));
 
         level_insert_share_resource(level, Window{});
         auto window = level_get_share_resource<Window>(level);
@@ -102,9 +109,8 @@ namespace wx
         level_insert_share_resource(level, nuklearContext);
     }
 
-    App& App::SpawnFromModel(const std::string& model_file,const std::string& name,Transform transform){
-        Assets::LoadAnimateModel(level,model_file.c_str(),name.c_str(),transform);
-        return *this;
+    ::entity_id App::SpawnFromModel(const std::string& model_file,const std::string& name,Transform transform){
+        return Assets::LoadAnimateModel(level,model_file.c_str(),name.c_str(),transform);
     }
 
     App &App::AddSystem(const char *name, system_t system)

@@ -28,7 +28,11 @@ namespace wx {
     void render_ui_phase(level* level,float delta);
     void render_nuklear_phase(level* level,float delta);
     //animation
+    void animator_setup_system(level* level,float delta);
     void animator_update_system(level* level,float delta);
+    //script
+    void script_setup_system(level* level,float delta);
+    void script_update_system(level* level,float delta);
 
     //Application
     void third_person_camera_controller_system(level* level,float delta);

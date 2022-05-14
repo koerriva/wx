@@ -504,5 +504,12 @@ namespace wx
         void *glfw;
         void *ctx;
     };
+
+    //script
+    struct LuaScript{
+        std::string uri;
+        bool cached = false;
+        std::string code;
+    };
 }
 #endif //WX_COMPONENTS_H

@@ -41,10 +41,7 @@ namespace wx {
             data.clear();
         }
     public:
-        ~AssetsLoader(){
-            std::cout << "Drop AssetsLoader" << std::endl;
-            Cleanup();
-        };
+        ~AssetsLoader();
 
         static void Init(){
             _instance = new AssetsLoader();

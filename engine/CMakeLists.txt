@@ -4,7 +4,7 @@ add_executable(hud src/hud.c src/demo.c src/perf.c)
 include_directories(include)
 include_directories(${PROJECT_SOURCE_DIR}/glad/include)
 include_directories(${PROJECT_SOURCE_DIR}/noise/include)
-target_link_libraries(engine PRIVATE spdlog::spdlog glad glfw3 opengl32 freetype noise nanovg tinyxml2 pthread)
+target_link_libraries(engine PRIVATE spdlog::spdlog glad glfw3 opengl32 freetype noise nanovg tinyxml2 pthread lua)
 target_link_libraries(hud PRIVATE glad glfw3 opengl32 freetype nanovg)
 
 file(COPY ../data/example DESTINATION ${PROJECT_BINARY_DIR}/engine)
