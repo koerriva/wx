@@ -340,7 +340,6 @@ namespace wx
 
         auto depth_shader = level_get_share_resource<DepthShader>(level);
         auto depth_cube_shader = level_get_share_resource<DepthCubeShader>(level);
-        auto depth_variance_shader = level_get_share_resource<DepthVarianceShader>(level);
 
         for (auto &light_entity : lights)
         {
@@ -387,7 +386,7 @@ namespace wx
                 mat4 pv = light->p * light->v;
                 ShaderProgram::SetMat4(shaderProgram, "PV", value_ptr(pv));
             }else if (light->type == Light::directional){
-                shaderProgram = depth_variance_shader->id;
+                shaderProgram = depth_shader->id;
                 ShaderProgram::Bind(shaderProgram);
 
                 mat4 pv = light->p * light->v;

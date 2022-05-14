@@ -5,6 +5,7 @@
 #include "engine.h"
 #include "systems.h"
 #include "font.h"
+#include "menu_loader.h"
 
 namespace wx
 {
@@ -25,8 +26,6 @@ namespace wx
         level_insert_share_resource(level, DepthShader{depthShader});
         uint32_t depthCubeShader = ShaderProgram::LoadShader("depth_cube", true);
         level_insert_share_resource(level, DepthCubeShader{depthCubeShader});
-        uint32_t depthVarianceShader = ShaderProgram::LoadShader("depth_variance");
-        level_insert_share_resource(level, DepthVarianceShader{depthVarianceShader});
 
         uint32_t skyboxMapShader = ShaderProgram::LoadShader("skybox_map", true);
         level_insert_share_resource(level, SkyboxMapShader{skyboxMapShader});
@@ -99,6 +98,7 @@ namespace wx
         NuklearContext nuklearContext{};
         nuklearContext.glfw = window->GetNKGlfw();
         nuklearContext.ctx = window->GetNKCtx();
+
         level_insert_share_resource(level, nuklearContext);
     }
 

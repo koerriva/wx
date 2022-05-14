@@ -104,6 +104,25 @@ namespace wx {
         }
     }
 
+    const char *AssetsLoader::loadText(const char *name, int *len) {
+        string filepath = string(root).append(FILE_SPLITER).append(name);
+        path dir(filepath);
+        WX_CORE_INFO("Find Text {}",dir.string());
+
+        if(data.count(filepath)>0){
+            auto& buffer = data[filepath];
+            if(buffer.size()==info[filepath].size){
+                WX_CORE_INFO("Add Terminated Char {}",dir.string());
+                buffer.push_back(0);
+            }
+            *len = info[filepath].size;
+            return (const char*)(buffer.data());
+        }else{
+            WX_CORE_ERROR("Can't Find File {}",dir.string());
+            return nullptr;
+        }
+    }
+
     const FileInfo &AssetsLoader::fileInfo(const char *name) {
         string filepath = string(root).append(FILE_SPLITER).append(name);
         path dir(filepath);

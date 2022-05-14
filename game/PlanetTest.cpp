@@ -4,6 +4,7 @@
 
 #include "PlanetTest.h"
 #include "systems.h"
+#include "menu_loader.h"
 
 #define MAX_VERTEX_BUFFER (512 * 1024)
 #define MAX_ELEMENT_BUFFER (128 * 1024)
@@ -11,6 +12,9 @@
 namespace wx {
     void planet_game(App* app){
         app->InsertResource(WindowConfig{"Metaverse Engine 0.3.2",1440,900});
+
+        NKMenu menu = load_menu("hud\\PlanetTest.xml");
+        app->InsertResource(menu);
 
         wx::Camera camera{};
         camera.position = glm::vec3(0.0f,2.0f,20.0f);
@@ -49,7 +53,7 @@ namespace wx {
 //        skybox.moon = TextureLoader::Load("skybox\\moon.png");
 //        skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
 //        skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
-////        Mesh skybox_mesh = Assets::LoadStaticModel("model\\cube.gltf");
+//        Mesh skybox_mesh = Assets::LoadStaticModel("model\\cube.gltf");
 //        Mesh skybox_mesh{};
 //        skybox_mesh.primitives.push_back(Assets::UnitCube(16));
 //        app->Spawn(Spatial3d{.name="Skybox"},Transform{},skybox,skybox_mesh);
@@ -158,39 +162,22 @@ namespace wx {
         auto glfw = (struct nk_glfw*)nkcontext->glfw;
         auto ctx = (struct nk_context*)nkcontext->ctx;
 
+        if(!level_has_share_resource<NKMenu>(level))return;
+        auto nkMenu = level_get_share_resource<NKMenu>(level);
+
         nk_glfw3_new_frame(glfw);
-        /* GUI */
-        if (nk_begin(ctx, "Demo", nk_rect(10, 10, 230, 300),
-                     NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_SCALABLE|
-                     NK_WINDOW_MINIMIZABLE|NK_WINDOW_TITLE))
-        {
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_int(ctx, u8"faces:", 2, &terrainShape->resolution, 120, 1, 1);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_property_float(ctx, u8"radius:", 1, &terrainShape->radius, 100, 0.1, 0.1);
-            nk_layout_row_dynamic(ctx, 25, 1);
 
-            nk_layout_row_dynamic(ctx, 20, 1);
-            nk_label(ctx, u8"颜色:", NK_TEXT_LEFT);
-            nk_layout_row_dynamic(ctx, 25, 1);
-            nk_colorf shapeColor{terrainShape->color[0],terrainShape->color[1],terrainShape->color[2],terrainShape->color[3]};
-            if (nk_combo_begin_color(ctx, nk_rgba_cf(shapeColor), nk_vec2(nk_widget_width(ctx),400))) {
-                nk_layout_row_dynamic(ctx, 120, 1);
-                shapeColor = nk_color_picker(ctx, shapeColor, NK_RGBA);
-                nk_layout_row_dynamic(ctx, 25, 1);
-                shapeColor.r = nk_propertyf(ctx, "#R:", 0, shapeColor.r, 1.0f, 0.01f,0.005f);
-                shapeColor.g = nk_propertyf(ctx, "#G:", 0, shapeColor.g, 1.0f, 0.01f,0.005f);
-                shapeColor.b = nk_propertyf(ctx, "#B:", 0, shapeColor.b, 1.0f, 0.01f,0.005f);
-                shapeColor.a = nk_propertyf(ctx, "#A:", 0, shapeColor.a, 1.0f, 0.01f,0.005f);
+        render_menu(ctx,*nkMenu);
 
-                terrainShape->color[0] = shapeColor.r;
-                terrainShape->color[1] = shapeColor.g;
-                terrainShape->color[2] = shapeColor.b;
-                terrainShape->color[3] = shapeColor.a;
-                nk_combo_end(ctx);
-            }
+        terrainShape->resolution = std::get<int>(nkMenu->data["terrain.faces"]);
+
+        terrainShape->radius = std::get<float>(nkMenu->data["terrain.radius"]);
+
+        vec4 color = std::get<vec4>(nkMenu->data["terrain.color"]);
+        for (int i = 0; i < 4; ++i) {
+            terrainShape->color[i] = color[i];
         }
-        nk_end(ctx);
+
         nk_glfw3_render(glfw, NK_ANTI_ALIASING_ON, MAX_VERTEX_BUFFER, MAX_ELEMENT_BUFFER);
     }
 }
@@ -202,7 +189,7 @@ int main(int argc,char** argv) {
     wx::Log::Init();
     wx::AssetsLoader::Init();
 
-    WX_INFO("我的游戏引擎 0.2");
+    WX_INFO("资源加载完成");
     auto* app = new wx::App();
     app->AddPlugin(SYSTEM_NAME(wx::gltf_viewer_game),wx::planet_game);
     app->Run();

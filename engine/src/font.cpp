@@ -97,7 +97,7 @@ namespace wx {
     }
 
     void Font::Init() {
-        _instance = new Font("data/font/NotoSansSC-Regular.otf");
+        _instance = new Font("data/font/NotoSans.otf");
         _instance->_init();
     }
 }

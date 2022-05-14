@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<menu>
+    <data-bind>
+        <data id="sun.turn" type ="int" val="0"/>
+        <data id="player.animate" type="int" val="1"/>
+    </data-bind>
+    <window title="控制面板" x="5" y="5" width="300" height="400">
+        <layout type="dynamic" height="25" cols="1" />
+        <label text="光照" align="left"/>
+        <layout type="dynamic" height="25" cols="2" />
+        <selecti data-bind="sun.turn">
+            <option name="关闭" val="0"/>
+            <option name="打开" val="1"/>
+        </selecti>
+        <spacer/>
+        <layout type="dynamic" height="25" cols="1" />
+        <label text="动画" align="left"/>
+        <layout type="dynamic" height="25" cols="2" />
+        <selecti data-bind="player.animate">
+            <option name="关闭" val="0"/>
+            <option name="打开" val="1"/>
+        </selecti>
+    </window>
+</menu>

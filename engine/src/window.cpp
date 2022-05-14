@@ -18,8 +18,8 @@
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
+//#define NK_INCLUDE_FONT_BAKING
+//#define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_KEYSTATE_BASED_INPUT
 #include "nuklear.h"
@@ -48,7 +48,7 @@ namespace wx {
         if(glfwInit()){
             glfwWindowHint(GLFW_SCALE_TO_MONITOR,GLFW_TRUE);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
             glfwWindowHint(GLFW_SAMPLES,4);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
             glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
@@ -99,21 +99,28 @@ namespace wx {
             /* Load Fonts: if none of these are loaded a default font will be used  */
             /* Load Cursor: if you uncomment cursor loading please hide the cursor */
             {
-                struct nk_font_atlas *atlas;
-                nk_glfw3_font_stash_begin(&nkGlfw, &atlas);
-                struct nk_font_config config = nk_font_config(16);
+                NK_STORAGE const nk_rune ranges[] = {
+                        0x0020, 0x00FF,
+                        0xFF01, 0xFF0F,
+                        0x4e00, 0x9FAF,
+                        0
+                };
+
+                struct nk_font_config config = nk_font_config(0);
                 config.oversample_h = 1;
                 config.oversample_v = 1;
-                config.range = nk_font_chinese_glyph_ranges();
-                struct nk_font *notosans = nk_font_atlas_add_from_file(atlas, "data/font/NotoSansSC-Regular.otf", 16, &config);
+                config.range = ranges;
+
+                struct nk_font_atlas *atlas;
+                nk_glfw3_font_stash_begin(&nkGlfw,&atlas);
+                struct nk_font *notosans = nk_font_atlas_add_from_file(atlas, "data/font/HanSans.otf", 18, &config);
                 nk_glfw3_font_stash_end(&nkGlfw);
-                /*nk_style_load_all_cursors(ctx, atlas->cursors);*/
+//                nk_style_load_all_cursors(nkContext, atlas->cursors);
                 nk_style_set_font(nkContext, &notosans->handle);
             }
 
             /*set_style(ctx, THEME_WHITE);*/
             /*set_style(ctx, THEME_RED);*/
-            /*set_style(ctx, THEME_BLUE);*/
             /*set_style(ctx, THEME_DARK);*/
         }
     }

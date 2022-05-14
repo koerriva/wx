@@ -8,6 +8,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include <variant>
 
 typedef uint32_t entity_id;
 
@@ -356,11 +357,6 @@ namespace wx
         uint32_t id;
     };
 
-    struct DepthVarianceShader
-    {
-        uint32_t id;
-    };
-
     struct SkyboxMapShader
     {
         uint32_t id;
@@ -493,6 +489,14 @@ namespace wx
         {
             return (curr_cursor_pos - last_cursor_pos) * cursor_sensitivity;
         }
+    };
+
+    using NKData = std::variant<int, float, vec3, vec4>;
+    struct NKMenu
+    {
+        std::string res;
+        int resLen = 0;
+        std::unordered_map<std::string,NKData> data;
     };
 
     struct NuklearContext

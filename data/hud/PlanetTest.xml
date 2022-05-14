@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<menu>
+    <data-bind>
+        <data id="terrain.faces" type ="int" val="30"/>
+        <data id="terrain.radius" type="float" val="10"/>
+        <data id="terrain.color" type="float4" val="1,1,1,1"/>
+    </data-bind>
+    <window title="测试" x="5" y="5" width="300" height="400">
+        <layout type="dynamic" height="25" cols="1" />
+        <property type="int" name="面数" min="2" max="120" step="1" resolution="1" data-bind="terrain.faces"/>
+        <layout type="dynamic" height="25" cols="1" />
+        <property type="float" name="半径" min="1" max="100" step="0.1" resolution="0.1" data-bind="terrain.radius"/>
+        <layout type="dynamic" height="25" cols="1" />
+        <layout type="dynamic" height="20" cols="1" />
+        <label text="颜色" align="left"/>
+        <layout type="dynamic" height="25" cols="1" />
+        <combocolor data-bind="terrain.color">
+            <layout type="dynamic" height="120" cols="1" />
+            <colorpicker height="120"/>
+        </combocolor>
+    </window>
+</menu>
