@@ -282,9 +282,8 @@ namespace wx
         }
     };
 
-    struct Skybox
+    struct Skydome
     {
-        cubemap_t cubemap;
         vec3 sun_pos;
         mat3 rot_stars;
         TEXTURE tint;        //the color of the sky on the half-sphere where the sun is. (time x height)
@@ -353,16 +352,6 @@ namespace wx
     };
 
     struct DepthCubeShader
-    {
-        uint32_t id;
-    };
-
-    struct SkyboxMapShader
-    {
-        uint32_t id;
-    };
-
-    struct SkyboxShader
     {
         uint32_t id;
     };

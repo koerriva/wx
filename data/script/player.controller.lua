@@ -7,5 +7,5 @@ end
 
 function OnUpdate(delta)
     times = times + 1
-    print(times)
+--     print(times)
 end

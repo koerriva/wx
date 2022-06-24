@@ -35,7 +35,7 @@ namespace wx
             entities_iter++;
         }
 
-        matrix->project = perspective(radians(60.f), window->GetAspect(), 0.1f, 1000.f);
+        matrix->project = perspective(radians(60.f), window->GetAspect(), 0.1f, 10000.f);
         matrix->ortho = ortho(0.f, float(window->GetWidth()), float(window->GetHeight()), 0.f);
     }
 
@@ -124,18 +124,17 @@ namespace wx
             {
                 camera = entity;
             }
-            if (entity != 0 && level_has_components<Skybox>(level, entity))
+            if (entity != 0 && level_has_components<Skydome>(level, entity))
             {
                 skybox_entity = entity;
             }
             entities_iter++;
         }
 
-        //        render_skydome_phase(level,delta);
-        //        render_skybox_phase(level,delta);
+        render_skydome_phase(level,delta);
         render_shadow_phase(level, delta);
         render_mesh_phase(level, delta);
-        //        render_ui_phase(level,delta);
+        //render_ui_phase(level,delta);
 
         auto *frameState = level_get_share_resource<FrameState>(level);
         frameState->delta_time = delta;
@@ -145,7 +144,7 @@ namespace wx
 
     void render_skydome_phase(level *level, float delta)
     {
-        auto skybox = level_get_component<Skybox>(level, skybox_entity);
+        auto skybox = level_get_component<Skydome>(level, skybox_entity);
         auto skydomeShader = level_get_share_resource<SkydomeShader>(level);
         auto frameState = level_get_share_resource<FrameState>(level);
 
@@ -154,15 +153,30 @@ namespace wx
 
         glViewport(0, 0, window->GetWidth(), window->GetHeight());
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+//        glFrontFace(GL_CW);
         glEnable(GL_DEPTH_TEST);
+
+        if (level_has_share_resource<RenderState>(level))
+        {
+            auto *renderState = level_get_share_resource<RenderState>(level);
+            if (renderState->mode == RenderState::Wireframe)
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+            if (renderState->mode == RenderState::Shader)
+            {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+        }
 
         uint32_t shaderProgram = skydomeShader->id;
         ShaderProgram::Bind(shaderProgram);
         auto mesh = level_get_component<Mesh>(level, skybox_entity);
+        auto transform = level_get_component<Transform>(level,skybox_entity);
 
         mat4 P = vp->project;
         mat4 V = vp->view;
-        mat4 M{1.f};
+        mat4 M = transform->GetLocalMatrix();
         ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
         ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
         ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
@@ -200,126 +214,9 @@ namespace wx
         }
 
         ShaderProgram::Unbind();
-    }
 
-    void render_skybox_phase(level *level, float delta)
-    {
-        glm::mat4 shadowCubeTransforms[6] = {mat4{1.0}};
-        auto right_left_face_view = [](vec3 position, float dir) -> mat4
-        {
-            return lookAt(position, position + vec3(dir, 0.0, 0.0), vec3(0.0, 1.0, 0.0));
-        };
-        auto up_down_face_view = [](vec3 position, float dir) -> mat4
-        {
-            return lookAt(position, position + vec3(0.0, dir, 0.0), vec3(0.0, 0.0, 1.0));
-        };
-        auto near_far_face_view = [](vec3 position, float dir) -> mat4
-        {
-            return lookAt(position, position + vec3(0.0, 0.0, dir), vec3(0.0, 1.0, 0.0));
-        };
-
-        auto skybox = level_get_component<Skybox>(level, skybox_entity);
-        auto skyboxMapShader = level_get_share_resource<SkyboxMapShader>(level);
-        auto skyboxShader = level_get_share_resource<SkyboxShader>(level);
-        auto frameState = level_get_share_resource<FrameState>(level);
-
-        glViewport(0, 0, skybox->cubemap.width, skybox->cubemap.height);
-        glBindFramebuffer(GL_FRAMEBUFFER, skybox->cubemap.fbo);
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        uint32_t shaderProgram = skyboxMapShader->id;
-        ShaderProgram::Bind(shaderProgram);
-        mat4 projection = ortho(-1.f, 1.f, -1.f, 1.f, 1.f, -1.f);
-        vec3 position{0.f};
-
-        shadowCubeTransforms[0] = projection * right_left_face_view(position, 1.0);   //right
-        shadowCubeTransforms[1] = projection * right_left_face_view(position, -1.0f); //left
-        shadowCubeTransforms[2] = projection * up_down_face_view(position, 1.0);      //up
-        shadowCubeTransforms[3] = projection * up_down_face_view(position, -1.0);     //down
-        shadowCubeTransforms[4] = projection * near_far_face_view(position, 1.0);     //near
-        shadowCubeTransforms[5] = projection * near_far_face_view(position, -1.0);    //far
-
-        for (int i = 0; i < 6; ++i)
-        {
-            ShaderProgram::SetMat4(shaderProgram, "faceMatrices[" + to_string(i) + "]", value_ptr(shadowCubeTransforms[i]));
-        }
-
-        auto mesh = level_get_component<Mesh>(level, skybox_entity);
-        mat4 M{1.f};
-        ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-        ShaderProgram::SetVec3(shaderProgram, "sun_pos", value_ptr(skybox->sun_pos));
-        ShaderProgram::SetMat3(shaderProgram, "rot_stars", value_ptr(skybox->rot_stars));
-
-        ShaderProgram::SetInt(shaderProgram, "tint", 0);
-        glBindTextureUnit(0, skybox->tint);
-        ShaderProgram::SetInt(shaderProgram, "tint2", 1);
-        glBindTextureUnit(1, skybox->tint2);
-        ShaderProgram::SetInt(shaderProgram, "sun", 2);
-        glBindTextureUnit(2, skybox->sun);
-        ShaderProgram::SetInt(shaderProgram, "moon", 3);
-        glBindTextureUnit(3, skybox->moon);
-        ShaderProgram::SetInt(shaderProgram, "clouds1", 4);
-        glBindTextureUnit(4, skybox->clouds1);
-        ShaderProgram::SetInt(shaderProgram, "clouds2", 5);
-        glBindTextureUnit(5, skybox->clouds2);
-
-        ShaderProgram::SetFloat(shaderProgram, "weather", skybox->weather);
-        ShaderProgram::SetFloat(shaderProgram, "time", frameState->total_time);
-
-        for (auto &primitive : mesh->primitives)
-        {
-            glBindVertexArray(primitive.vao);
-            if (primitive.indices_count == 0)
-            {
-                glDrawArrays(GL_TRIANGLES, 0, primitive.vertices_count);
-            }
-            else
-            {
-                glDrawElements(GL_TRIANGLES, primitive.indices_count, primitive.indices_type, nullptr);
-            }
-            glBindVertexArray(0);
-        }
-
-        ShaderProgram::Unbind();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        {
-            auto window = level_get_share_resource<Window>(level);
-            auto vp = level_get_share_resource<VPMatrices>(level);
-
-            mat4 P = vp->project;
-            mat4 V = vp->view;
-
-            glViewport(0, 0, window->GetWidth(), window->GetHeight());
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            //            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glEnable(GL_DEPTH_TEST);
-            //            glDepthMask(GL_FALSE);
-
-            M = scale(M, vec3(3.f));
-            shaderProgram = skyboxShader->id;
-            ShaderProgram::Bind(shaderProgram);
-            ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
-            ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
-            ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
-            ShaderProgram::SetInt(shaderProgram, "skyboxMap", 0);
-            glBindTextureUnit(0, skybox->cubemap.texture);
-            for (auto &primitive : mesh->primitives)
-            {
-                glBindVertexArray(primitive.vao);
-                if (primitive.indices_count == 0)
-                {
-                    glDrawArrays(GL_TRIANGLES, 0, primitive.vertices_count);
-                }
-                else
-                {
-                    glDrawElements(GL_TRIANGLES, primitive.indices_count, primitive.indices_type, nullptr);
-                }
-                glBindVertexArray(0);
-            }
-            ShaderProgram::Unbind();
-            //            glDepthMask(GL_TRUE);
-        }
+//        glFrontFace(GL_CCW);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
     void render_shadow_phase(level *level, float delta)
@@ -446,7 +343,7 @@ namespace wx
         auto frameState = level_get_share_resource<FrameState>(level);
 
         glViewport(0, 0, window->GetWidth(), window->GetHeight());
-        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+//        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
         if (level_has_share_resource<RenderState>(level))
@@ -496,12 +393,11 @@ namespace wx
         }
 
         ShaderProgram::SetInt(shaderProgram, "skyboxMap", shadowMapOffset + 5 + 5);
-        if (skybox_entity > 0)
-        {
-            auto skybox = level_get_component<Skybox>(level, skybox_entity);
-            ShaderProgram::SetInt(shaderProgram, "has_skybox", skybox_entity ? 1 : 0);
-            glBindTextureUnit(shadowMapOffset + 5 + 5, skybox->cubemap.texture);
-        }
+//        if (skybox_entity > 0)
+//        {
+//            auto skybox = level_get_component<Skydome>(level, skybox_entity);
+//            ShaderProgram::SetInt(shaderProgram, "has_skybox", skybox_entity ? 1 : 0);
+//        }
 
         int cube_map_index = 0;
         int map_index = 0;

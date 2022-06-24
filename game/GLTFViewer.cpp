@@ -39,6 +39,7 @@ namespace wx {
         sun.has_shadow_map = 1;
         sun.near_plane = -1.f;
         sun.far_plane = 20.f;
+        sun.state = 1;
 
         sun.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, sun.near_plane, sun.far_plane);
         sun.v = glm::lookAt(sun.position, vec3(0.0f), glm::vec3(1.0f));
@@ -57,6 +58,19 @@ namespace wx {
         app->SpawnFromModel("model\\Scene.gltf","Scene");
         auto player01_entity = app->SpawnFromModel("model\\Formal.gltf","Player01");
         app->AddComponent(player01_entity,LuaScript{"script\\player.controller.lua"});
+
+        Skydome skybox{};
+        skybox.weather = 0.5;
+        skybox.sun_pos = sun.position;
+        skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
+        skybox.tint = TextureLoader::Load("skybox\\tint.png");
+        skybox.tint2 = TextureLoader::Load("skybox\\tint2.png");
+        skybox.sun = TextureLoader::Load("skybox\\sun.png");
+        skybox.moon = TextureLoader::Load("skybox\\moon.png");
+        skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
+        skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
+        Mesh skybox_mesh = Assets::LoadStaticModel("model\\Sphere.gltf");
+        app->Spawn(Spatial3d{.name="Skybox"},Transform{.scale=vec3(2800.f)},skybox,skybox_mesh);
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
