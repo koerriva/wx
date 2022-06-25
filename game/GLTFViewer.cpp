@@ -17,7 +17,7 @@ namespace wx {
 
     void gltf_viewer_game(App* app){
         app->InsertResource(WindowConfig{"Metaverse Engine 0.3.2",1440,900});
-        WX_INFO("_1-------------------------------------");
+        WX_INFO("-------------------------------------");
         NKMenu menu = load_menu("hud\\GLTFViewer.xml");
         app->InsertResource(menu);
 
@@ -60,8 +60,10 @@ namespace wx {
         app->AddComponent(player01_entity,LuaScript{"script\\player.controller.lua"});
 
         Skydome skybox{};
+        skybox.radius = 2800;
         skybox.weather = 0.5;
-        skybox.sun_pos = sun.position;
+
+        skybox.sun_pos = sun.direction*(-skybox.radius);
         skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
         skybox.tint = TextureLoader::Load("skybox\\tint.png");
         skybox.tint2 = TextureLoader::Load("skybox\\tint2.png");
@@ -70,7 +72,7 @@ namespace wx {
         skybox.clouds1 = TextureLoader::Load("skybox\\clouds1.png");
         skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
         Mesh skybox_mesh = Assets::LoadStaticModel("model\\Sphere.gltf");
-        app->Spawn(Spatial3d{.name="Skybox"},Transform{.scale=vec3(2800.f)},skybox,skybox_mesh);
+        app->Spawn(Spatial3d{.name="Skybox"},Transform{.scale=vec3(skybox.radius)},skybox,skybox_mesh);
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
@@ -231,8 +233,7 @@ namespace wx {
 }
 
 int main(int argc,char** argv) {
-
-//    system("chcp 65001");
+    system("chcp 65001");
 
     wx::Log::Init();
     wx::AssetsLoader::Init();

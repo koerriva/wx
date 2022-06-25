@@ -180,6 +180,7 @@ namespace wx
         ShaderProgram::SetMat4(shaderProgram, "P", value_ptr(P));
         ShaderProgram::SetMat4(shaderProgram, "V", value_ptr(V));
         ShaderProgram::SetMat4(shaderProgram, "M", value_ptr(M));
+        ShaderProgram::SetFloat(shaderProgram, "radius", skybox->radius);
         ShaderProgram::SetVec3(shaderProgram, "sun_pos", value_ptr(skybox->sun_pos));
         ShaderProgram::SetMat3(shaderProgram, "rot_stars", value_ptr(skybox->rot_stars));
 
@@ -198,6 +199,8 @@ namespace wx
 
         ShaderProgram::SetFloat(shaderProgram, "weather", skybox->weather);
         ShaderProgram::SetFloat(shaderProgram, "time", frameState->total_time);
+        vec3 camPos = level_get_component<Camera>(level, camera)->position;
+        ShaderProgram::SetVec3(shaderProgram, "camera_pos", value_ptr(camPos));
 
         for (auto &primitive : mesh->primitives)
         {

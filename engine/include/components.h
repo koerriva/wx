@@ -8,6 +8,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include <glm/gtx/intersect.hpp>
 #include <variant>
 
 typedef uint32_t entity_id;
@@ -284,6 +285,7 @@ namespace wx
 
     struct Skydome
     {
+        float radius;//半径
         vec3 sun_pos;
         mat3 rot_stars;
         TEXTURE tint;        //the color of the sky on the half-sphere where the sun is. (time x height)

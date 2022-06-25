@@ -128,6 +128,8 @@ namespace wx {
     void Window::Update(){
         glfwPollEvents();
         closed = glfwWindowShouldClose(glfwWindow)==1;
+        glfwGetFramebufferSize(glfwWindow,&width,&height);
+        aspect = float(width)/float(height);
         glfwSwapBuffers(glfwWindow);
     }
 

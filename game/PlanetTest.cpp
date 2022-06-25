@@ -43,8 +43,9 @@ namespace wx {
         app->Spawn(Planet01,transform,terrainMesh,ReceiveShadow{},terrainShape);
 
         Skydome skybox{};
+        skybox.radius = 2800.f;
         skybox.weather = 0.5;
-        skybox.sun_pos = sun.position;
+        skybox.sun_pos = sun.direction*(-skybox.radius);
         skybox.rot_stars = mat3_cast(quat(vec3(radians(30.f), radians(90.f),0)));
 
         skybox.tint = TextureLoader::Load("skybox\\tint.png");
@@ -55,7 +56,7 @@ namespace wx {
         skybox.clouds2 = TextureLoader::Load("skybox\\clouds2.png");
         Mesh skybox_mesh = Assets::LoadStaticModel("model\\Sphere.gltf");
 
-        app->Spawn(Spatial3d{.name="Skybox"},Transform{.scale=vec3(2800.f)},skybox,skybox_mesh);
+        app->Spawn(Spatial3d{.name="Skybox"},Transform{.scale=vec3(skybox.radius)},skybox,skybox_mesh);
 
         app->AddSystem(SYSTEM_NAME(test_input_system),test_input_system);
         app->AddSystem(SYSTEM_NAME(third_person_camera_controller_system),third_person_camera_controller_system);
