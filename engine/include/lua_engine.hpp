@@ -2,6 +2,8 @@
 
 #include <sol/sol.hpp>
 #include <functional>
+#include "ecs.h"
+#include "components.h"
 
 namespace wx
 {
@@ -12,16 +14,33 @@ namespace wx
                 _instance->init();
             }
 
-            template<class R, class... ARGS>
-            static std::function<R(ARGS...)> Run(std::string code, const char* fn){
-                return _instance->run(code,fn);
+            static void Load(std::string& key,std::string& code,entity_id entity,Transform* transform){
+                _instance->load(key,code,entity,transform);
             }
+
+//            template<class R, class... ARGS>
+//            static std::function<R(ARGS...)> Run(std::string code, const char* fn){
+//                return _instance->run(code,fn);
+//            }
+
+            static void InvokeStartFn(std::string& key){
+                _instance->invoke_start(key);
+            }
+
+            static void InvokeUpdateFn(std::string& key,float t){
+                _instance->invoke_update(key,t);
+            }
+
+            static void InvokeExitFn(std::string& key){
+                _instance->invoke_exit(key);
+            }
+
             static void Cleanup(){
                 delete _instance;
             }
+
         private:
             static ScriptEngine* _instance;
-            std::unordered_map<std::string,sol::load_result> load_scripts;
 
             sol::state lua;
 
@@ -30,16 +49,21 @@ namespace wx
 
             void init();
 
-            auto run(std::string code, const char* function){
-                auto result = lua.safe_script(code,sol::script_throw_on_error);
-                if (!result.valid()) {
-                    sol::error err = result;
-                    std::cerr << "The code has failed to run!\n"
-                            << err.what() << "\nPanicking and exiting..."
-                            << std::endl;
-                    throw std::runtime_error(err.what());
-                }
-                return lua[function];
+            void load(std::string& name,std::string& code,entity_id entity,Transform* transform);
+
+            void invoke_start(std::string& key){
+                auto self = lua[key];
+                self["OnStart"](self);
+            }
+
+            void invoke_update(std::string& key,float t){
+                auto self = lua[key];
+                self["OnUpdate"](self,t);
+            }
+
+            void invoke_exit(std::string& key){
+                auto self = lua[key];
+                self["OnExit"](self);
             }
 
             void cleanup();

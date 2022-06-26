@@ -148,9 +148,11 @@ void main()
 
     color = vec4(base_color+sun_color,1.0);
 
-    factor = snoise((world_Position/vec3(radius))*1);
+    //factor = snoise((world_Position/vec3(radius))*1);
 
-    vec4 cloud_color = getCloud(world_Position,camera_pos);
+    //color = vec4(color.xyz+factor,1.0);
 
-    color = vec4(color.rgb*(1.0-cloud_color.a)+cloud_color.rgb,1.0);
+    //vec4 cloud_color = getCloud(world_Position,camera_pos);
+
+    //color = vec4(color.rgb*(1.0-cloud_color.a)+cloud_color.rgb,1.0);
 }

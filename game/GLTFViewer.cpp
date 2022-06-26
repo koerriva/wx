@@ -50,14 +50,14 @@ namespace wx {
 
         quat dir = quatLookAt(sun.direction,vec3(0.0f,1.0f,0.0f));
         auto fly01_entity = app->SpawnFromModel("model\\CesiumDrone.glb","Fly01",Transform{.position=vec3(0.f,5.f,0.0f)});
-        app->AddComponent(fly01_entity,LuaScript{"script\\enemy.controller.lua"});
+        app->AddComponent(fly01_entity,LuaScript{"Enemy","script\\enemy.controller.lua"});
 //        app->SpawnFromModel("model\\cube.gltf","Cube01");
 //        app->SpawnFromModel("model\\Plane.glb","Plane01",Transform{.scale=vec3(20.f)});
         app->SpawnFromModel("model\\Axis.glb","SunGizmos",Transform{.position=sun.position,.rotation=dir});
         app->SpawnFromModel("model\\Snake.gltf","Snake01",Transform{.position=vec3(0.f,0.f,3.f),.scale=vec3(0.2f)});
         app->SpawnFromModel("model\\Scene.gltf","Scene");
         auto player01_entity = app->SpawnFromModel("model\\Formal.gltf","Player01");
-        app->AddComponent(player01_entity,LuaScript{"script\\player.controller.lua"});
+        app->AddComponent(player01_entity,LuaScript{"PlayerController","script\\player.controller.lua"});
 
         Skydome skybox{};
         skybox.radius = 2800;

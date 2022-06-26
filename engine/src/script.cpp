@@ -10,14 +10,15 @@ namespace wx {
             uint32_t entity_idx = entities_iter-entities_begin;
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
             if(entity!=0&&level_has_components<LuaScript>(level,entity)){
-                LuaScript* luaScript = level_get_component<LuaScript>(level,entity);
+                auto* luaScript = level_get_component<LuaScript>(level,entity);
+                auto* transform = level_get_component<Transform>(level,entity);
                 if(!luaScript->cached){
                     int len = 0;
                     std::string code = AssetsLoader::LoadText(luaScript->uri.c_str(),&len);
                     luaScript->cached = true;
                     luaScript->code = code;
-                    std::function<void(void)> OnStart = ScriptEngine::Run<void>(luaScript->code,"OnStart");
-                    OnStart();
+                    ScriptEngine::Load(luaScript->key,luaScript->code,entity,transform);
+                    ScriptEngine::InvokeStartFn(luaScript->key);
                 }
             }
             entities_iter++;
@@ -30,10 +31,9 @@ namespace wx {
             uint32_t entity_idx = entities_iter-entities_begin;
             entity_id entity = CREATE_ID((*entities_iter),entity_idx);
             if(entity!=0&&level_has_components<LuaScript>(level,entity)){
-                LuaScript* luaScript = level_get_component<LuaScript>(level,entity);
+                auto* luaScript = level_get_component<LuaScript>(level,entity);
                 if(luaScript->cached){
-                    std::function<void(float)> OnUpdate = ScriptEngine::Run<void,float>(luaScript->code,"OnUpdate");
-                    OnUpdate(delta);
+                    ScriptEngine::InvokeUpdateFn(luaScript->key,delta);
                 }
             }
             entities_iter++;

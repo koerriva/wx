@@ -9,6 +9,9 @@
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 #include <glm/gtx/intersect.hpp>
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/string_cast.hpp>
+
 #include <variant>
 
 typedef uint32_t entity_id;
@@ -43,6 +46,22 @@ namespace wx
         vec3 position{0.0f};
         quat rotation{1.0f, 0.0f, 0.0f, 0.0f};
         vec3 scale{1.0f};
+
+        void Rotate(vec3 dir){
+//            WX_CORE_ERROR("TODO");
+            vec3 up{0.0f,1.0f,0.0f};
+            mat4 R = mat4_cast(rotation);
+            vec3 oriented = normalize(dir);
+
+            auto anglex = acos(oriented.x);
+            auto anglez = asin(oriented.z);
+
+            WX_CORE_INFO("dir {},{},{}",glm::to_string(oriented),anglex,anglez);
+            R = rotate(R,anglex,up);
+            rotation = quat(R);
+
+            rotation = quatLookAt(-oriented,up);
+        }
 
         [[nodiscard]] mat4 GetLocalMatrix() const
         {
@@ -498,6 +517,7 @@ namespace wx
 
     //script
     struct LuaScript{
+        std::string key="global";
         std::string uri;
         bool cached = false;
         std::string code;
