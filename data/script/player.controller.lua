@@ -44,27 +44,27 @@ function PlayerController:OnUpdate(delta)
 
     acceleration.x = math.random() * dir.x
     acceleration.z = math.random() * dir.z
-    print("acc1",tostring(acceleration))
+    --print("acc1",tostring(acceleration))
 
     acceleration = glm.vec3.normalize(acceleration) * scalar
-    print("acc2",tostring(acceleration))
+    --print("acc2",tostring(acceleration))
 
     velocity = velocity + acceleration
 
     velocity = glm.vec3.clamp(velocity,glm.vec3(-0.1),glm.vec3(0.1))
 
-    print("vel",tostring(velocity))
+    --print("vel",tostring(velocity))
 
     transform = PlayerController.transform
     transform.position = transform.position + velocity
     transform:rotate(velocity)
 
     lost_time = lost_time + delta
-    print("walking...",lost_time)
+    --print("walking...",lost_time)
 end
 
 function PlayerController:OnExit()
-    print("Disconnected ...")
+    print("disconnected ...")
 end
 
 return PlayerController

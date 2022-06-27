@@ -6,6 +6,7 @@ end
 
 function Enemy:OnUpdate(delta)
     --print("enemy",Enemy.entity)
+    print("delta",delta)
 end
 
 function Enemy:OnExit()

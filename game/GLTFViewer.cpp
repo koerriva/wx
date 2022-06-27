@@ -17,7 +17,7 @@ namespace wx {
 
     void gltf_viewer_game(App* app){
         app->InsertResource(WindowConfig{"Metaverse Engine 0.3.2",1440,900});
-        WX_INFO("-------------------------------------");
+        WX_INFO("------------------------------------x-");
         NKMenu menu = load_menu("hud\\GLTFViewer.xml");
         app->InsertResource(menu);
 

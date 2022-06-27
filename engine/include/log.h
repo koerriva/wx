@@ -4,10 +4,10 @@
 
 #ifndef WX_LOG_H
 #define WX_LOG_H
-
 #include <spdlog/spdlog.h>
 #include <spdlog/async.h>
 #include <spdlog/fmt/ostr.h>
+#include <memory>
 
 namespace wx {
     class Log {
