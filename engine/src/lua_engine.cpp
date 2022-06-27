@@ -3,6 +3,7 @@
 #include "components.h"
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <iostream>
 
 namespace wx {
     ScriptEngine* ScriptEngine::_instance = nullptr;
@@ -16,7 +17,7 @@ namespace wx {
     }
 
     void ScriptEngine::init(){
-        lua.open_libraries(sol::lib::base,sol::lib::package,sol::lib::math,sol::lib::string,sol::lib::os,sol::lib::io);
+        lua.open_libraries(sol::lib::base,sol::lib::package,sol::lib::math,sol::lib::string,sol::lib::os,sol::lib::io,sol::lib::bit32);
         lua.script("print('脚本系统初始化')");
 
         auto entities = lua.require_file("entities","data\\script\\entities.lua");
@@ -32,6 +33,7 @@ namespace wx {
                                     "b", &glm::vec3::b,
                                     "clamp", [](const glm::vec3* vec_a,const glm::vec3* vec_min,const glm::vec3* vec_max) {return clamp(*vec_a,*vec_min,*vec_max);},
                                     "normalize", [](const glm::vec3* vec_a) {return normalize(*vec_a);},
+                                    "perlin",[](const glm::vec3* vec_a) {return perlin(*vec_a);},
                                     sol::meta_function::to_string,[] (const glm::vec3* vec) -> std::string {return glm::to_string(*vec);},
                                     sol::meta_function::addition,[] (const glm::vec3* vec_a,const  glm::vec3* vec_b) {return (*vec_a)+(*vec_b);},
                                     sol::meta_function::subtraction,[] (const glm::vec3* vec_a,const  glm::vec3* vec_b) {return (*vec_a)-(*vec_b);},

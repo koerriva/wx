@@ -14,15 +14,15 @@ end
 
 function random2D()
     v = glm.vec3(0)
-    x = math.random(1,100)
-    y = math.random(1,100)
-    if x > 50 then
+    x = math.random(1,10)
+    y = math.random(1,10)
+    if x > 5 then
         v.x = 1.
     else
         v.x = -1.
     end
 
-    if y < 50 then
+    if y < 5 then
         v.z = 1.
     else
         v.z = -1.
@@ -35,7 +35,7 @@ local lost_time = 0.0
 local dir = glm.vec3(0,0,1)
 
 function PlayerController:OnUpdate(delta)
-    scalar = math.random() * delta * 0.05
+    scalar = math.random() * delta * 0.02
 
     if lost_time > 1.0 then
         dir = random2D()
