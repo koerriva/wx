@@ -85,7 +85,7 @@ int main(int argc,char** argv) {
     sun.near_plane = -20.f;
     sun.far_plane = 20.f;
 
-    sun.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, sun.near_plane, sun.far_plane);;
+    sun.p = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, sun.near_plane, sun.far_plane);
     sun.v = glm::lookAt(vec3{-5,5,0}, sun.direction*vec3(5.f), glm::vec3(0.0f, 1.0f, 0.0f));
 
     app->Spawn(sun,CastShadow{},Sun{});
